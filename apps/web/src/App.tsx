@@ -13,6 +13,9 @@ import PeoplePage from './pages/people/PeoplePage';
 import ChatPage from './pages/chat/ChatPage';
 import InboxPage from './pages/inbox/InboxPage';
 import HomeDashboard from './pages/dashboard/HomeDashboard';
+import ChatLandingPage from './pages/chat/ChatLandingPage';
+import TeamsPage from './pages/teams/TeamsPage';
+import ClipsPage from './pages/clips/ClipsPage';
 import SpacePage from './pages/spaces/SpacePage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -46,6 +49,9 @@ export default function App() {
                     <Route path="inbox/:filter" element={<InboxPage />} />
                     <Route path="settings/profile" element={<ProfileSettingsPage />} />
                     <Route path="settings/organization" element={<OrgSettingsPage />} />
+                    <Route path="chat" element={<ChatLandingPage />} />
+                    <Route path="teams" element={<TeamsPage />} />
+                    <Route path="clips" element={<ClipsPage />} />
                     <Route path="channels/:channelId" element={<ChatPage />} />
                     <Route path="conversations/:conversationId" element={<ChatPage />} />
                     <Route path="spaces/:spaceId" element={<SpacePage />} />

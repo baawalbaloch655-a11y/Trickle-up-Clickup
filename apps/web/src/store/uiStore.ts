@@ -29,7 +29,7 @@ export const useUIStore = create<UIState>((set) => ({
     sidebarPreferences: {
         home: true,
         spaces: true,
-        chat: false,
+        chat: true,
         planner: true,
         ai: true,
         teams: true,
@@ -37,7 +37,7 @@ export const useUIStore = create<UIState>((set) => ({
         dashboards: false,
         whiteboards: false,
         forms: false,
-        clips: false,
+        clips: true,
         goals: false,
         timesheets: false,
     },
