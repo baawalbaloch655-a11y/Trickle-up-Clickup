@@ -1,0 +1,303 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  :root,
+  [data-theme="purple"] {
+    color-scheme: dark;
+    /* Tailwind Purple */
+    --color-accent-50: 250 245 255;
+    --color-accent-100: 243 232 255;
+    --color-accent-200: 233 213 255;
+    --color-accent-300: 216 180 254;
+    --color-accent-400: 192 132 252;
+    --color-accent-500: 168 85 247;
+    --color-accent-600: 147 51 234;
+    --color-accent-700: 126 34 206;
+    --color-accent-800: 107 33 168;
+    --color-accent-900: 88 28 135;
+    --color-accent-950: 59 7 100;
+  }
+
+  [data-theme="blue"] {
+    /* Tailwind Blue */
+    --color-accent-50: 239 246 255;
+    --color-accent-100: 219 234 254;
+    --color-accent-200: 191 219 254;
+    --color-accent-300: 147 197 253;
+    --color-accent-400: 96 165 250;
+    --color-accent-500: 59 130 246;
+    --color-accent-600: 37 99 235;
+    --color-accent-700: 29 78 216;
+    --color-accent-800: 30 64 175;
+    --color-accent-900: 30 58 138;
+    --color-accent-950: 23 37 84;
+  }
+
+  [data-theme="pink"] {
+    /* Tailwind Pink */
+    --color-accent-50: 253 242 248;
+    --color-accent-100: 252 231 243;
+    --color-accent-200: 251 207 232;
+    --color-accent-300: 249 168 212;
+    --color-accent-400: 244 114 182;
+    --color-accent-500: 236 72 153;
+    --color-accent-600: 219 39 119;
+    --color-accent-700: 190 24 93;
+    --color-accent-800: 157 23 77;
+    --color-accent-900: 131 24 67;
+    --color-accent-950: 80 7 36;
+  }
+
+  [data-theme="violet"] {
+    /* Tailwind Violet */
+    --color-accent-50: 245 243 255;
+    --color-accent-100: 237 233 254;
+    --color-accent-200: 221 214 254;
+    --color-accent-300: 196 181 253;
+    --color-accent-400: 167 139 250;
+    --color-accent-500: 139 92 246;
+    --color-accent-600: 124 58 237;
+    --color-accent-700: 109 40 217;
+    --color-accent-800: 91 33 182;
+    --color-accent-900: 76 29 149;
+    --color-accent-950: 46 16 101;
+  }
+
+  [data-theme="indigo"] {
+    /* Tailwind Indigo */
+    --color-accent-50: 238 242 255;
+    --color-accent-100: 224 231 255;
+    --color-accent-200: 199 210 254;
+    --color-accent-300: 165 180 252;
+    --color-accent-400: 129 140 248;
+    --color-accent-500: 99 102 241;
+    --color-accent-600: 79 70 229;
+    --color-accent-700: 67 56 202;
+    --color-accent-800: 55 48 163;
+    --color-accent-900: 49 46 129;
+    --color-accent-950: 30 27 75;
+  }
+
+  [data-theme="orange"] {
+    /* Tailwind Orange */
+    --color-accent-50: 255 247 237;
+    --color-accent-100: 255 237 213;
+    --color-accent-200: 254 215 170;
+    --color-accent-300: 253 186 116;
+    --color-accent-400: 251 146 60;
+    --color-accent-500: 249 115 22;
+    --color-accent-600: 234 88 12;
+    --color-accent-700: 194 65 12;
+    --color-accent-800: 154 52 18;
+    --color-accent-900: 124 45 18;
+    --color-accent-950: 67 20 7;
+  }
+
+  [data-theme="teal"] {
+    /* Tailwind Teal */
+    --color-accent-50: 240 253 250;
+    --color-accent-100: 204 251 241;
+    --color-accent-200: 153 246 228;
+    --color-accent-300: 94 234 212;
+    --color-accent-400: 45 212 191;
+    --color-accent-500: 20 184 166;
+    --color-accent-600: 13 148 136;
+    --color-accent-700: 15 118 110;
+    --color-accent-800: 17 94 89;
+    --color-accent-900: 19 78 74;
+    --color-accent-950: 4 47 46;
+  }
+
+  [data-theme="bronze"] {
+    /* Tailwind Stone */
+    --color-accent-50: 250 250 249;
+    --color-accent-100: 245 245 244;
+    --color-accent-200: 231 229 228;
+    --color-accent-300: 214 211 209;
+    --color-accent-400: 168 162 158;
+    --color-accent-500: 120 113 108;
+    --color-accent-600: 87 83 78;
+    --color-accent-700: 68 64 60;
+    --color-accent-800: 41 37 36;
+    --color-accent-900: 28 25 23;
+    --color-accent-950: 12 10 9;
+  }
+
+  [data-theme="mint"] {
+    /* Tailwind Emerald */
+    --color-accent-50: 236 253 245;
+    --color-accent-100: 209 250 229;
+    --color-accent-200: 167 243 208;
+    --color-accent-300: 110 231 183;
+    --color-accent-400: 52 211 153;
+    --color-accent-500: 16 185 129;
+    --color-accent-600: 5 150 105;
+    --color-accent-700: 4 120 87;
+    --color-accent-800: 6 95 70;
+    --color-accent-900: 6 78 59;
+    --color-accent-950: 2 44 34;
+  }
+
+  [data-theme="black"] {
+    /* Tailwind Slate */
+    --color-accent-50: 248 250 252;
+    --color-accent-100: 241 245 249;
+    --color-accent-200: 226 232 240;
+    --color-accent-300: 203 213 225;
+    --color-accent-400: 148 163 184;
+    --color-accent-500: 100 116 139;
+    --color-accent-600: 71 85 105;
+    --color-accent-700: 51 65 85;
+    --color-accent-800: 30 41 59;
+    --color-accent-900: 15 23 42;
+    --color-accent-950: 2 6 23;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gray-950 text-gray-100 font-sans antialiased;
+    min-height: 100vh;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-700 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent-500 ring-offset-2 ring-offset-gray-950;
+  }
+}
+
+@layer components {
+
+  /* Glass card */
+  .card {
+    @apply bg-gray-900 border border-gray-800 rounded-2xl;
+  }
+
+  .card-glass {
+    @apply bg-gray-900/60 backdrop-blur-md border border-gray-700/50 rounded-2xl;
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-all duration-200 focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent-600 text-gray-950 hover:bg-accent-500 active:scale-95 shadow-glow;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700 active:scale-95;
+  }
+
+  .btn-ghost {
+    @apply btn text-gray-400 hover:text-gray-100 hover:bg-gray-800 active:scale-95;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-500 active:scale-95;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-sm;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500 transition-colors;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  /* Sidebar active item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 font-medium transition-all duration-150 hover:bg-gray-800 hover:text-gray-100;
+  }
+
+  .nav-item-active {
+    @apply nav-item bg-accent-600/15 text-accent-400 hover:bg-accent-600/20 hover:text-accent-300;
+  }
+
+  /* Status badge variants */
+  .badge-todo {
+    @apply badge bg-gray-700/60 text-gray-300;
+  }
+
+  .badge-in_progress {
+    @apply badge bg-blue-500/15 text-blue-400;
+  }
+
+  .badge-in_review {
+    @apply badge bg-yellow-500/15 text-yellow-400;
+  }
+
+  .badge-done {
+    @apply badge bg-green-500/15 text-green-400;
+  }
+
+  .badge-cancelled {
+    @apply badge bg-red-500/15 text-red-400;
+  }
+
+  /* Priority badge variants */
+  .badge-low {
+    @apply badge bg-gray-700/60 text-gray-400;
+  }
+
+  .badge-medium {
+    @apply badge bg-blue-500/15 text-blue-400;
+  }
+
+  .badge-high {
+    @apply badge bg-orange-500/15 text-orange-400;
+  }
+
+  .badge-urgent {
+    @apply badge bg-red-500/15 text-red-400;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-accent-400 to-purple-400 bg-clip-text text-transparent;
+  }
+}

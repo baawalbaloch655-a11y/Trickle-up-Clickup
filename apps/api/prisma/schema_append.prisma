@@ -1,0 +1,135 @@
+
+// ─────────────────────────────────────────────
+// ENHANCED ENTERPRISE FEATURES (ClickUp Parity)
+// ─────────────────────────────────────────────
+
+// --- WORKSPACE HIERARCHY ---
+
+model Space {
+  id          String   @id @default(uuid())
+  orgId       String
+  name        String
+  description String?
+  color       String   @default("#000000")
+  isPrivate   Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  folders     Folder[]
+  projects    Project[]    // Projects act as "Lists" in ClickUp terminology
+
+  @@map("spaces")
+}
+
+model Folder {
+  id          String   @id @default(uuid())
+  spaceId     String
+  orgId       String
+  name        String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  space       Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  projects    Project[]    // Projects act as "Lists" inside a Folder
+
+  @@map("folders")
+}
+
+// --- CUSTOMIZATION & WORKFLOW ---
+
+model CustomField {
+  id          String   @id @default(uuid())
+  orgId       String
+  name        String
+  type        CustomFieldType
+  options     Json?    // For dropdowns, tags, etc.
+  
+  values      CustomFieldValue[]
+
+  @@map("custom_fields")
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DROPDOWN
+  DATE
+  CHECKBOX
+  USER
+}
+
+model CustomFieldValue {
+  id            String   @id @default(uuid())
+  taskId        String
+  customFieldId String
+  value         Json     // Stores the actual value
+
+  customField   CustomField @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  task          Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, customFieldId])
+  @@map("custom_field_values")
+}
+
+// --- COLLABORATION ---
+
+model TaskComment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String   // Rich text content
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("task_comments")
+}
+
+// --- TIME TRACKING ---
+
+model TimeEntry {
+  id          String    @id @default(uuid())
+  taskId      String
+  userId      String
+  startTime   DateTime  @default(now())
+  endTime     DateTime?
+  duration    Int?      // In seconds
+  description String?
+
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("time_entries")
+}
+
+// --- AUTOMATION ENGINE ---
+
+model AutomationRule {
+  id          String   @id @default(uuid())
+  orgId       String
+  projectId   String?  // If null, applies to whole Org or Space
+  name        String
+  trigger     Json     // { type: "STATUS_CHANGE", from: "TODO", to: "DONE" }
+  conditions  Json?    // { priority: "HIGH" }
+  isActive    Boolean  @default(true)
+
+  actions     AutomationAction[]
+
+  @@map("automation_rules")
+}
+
+model AutomationAction {
+  id        String         @id @default(uuid())
+  ruleId    String
+  type      String         // e.g., "ASSIGN_USER", "SEND_EMAIL", "WEBHOOK"
+  payload   Json           // Configuration for the action
+
+  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@map("automation_actions")
+}
