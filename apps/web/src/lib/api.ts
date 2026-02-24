@@ -161,6 +161,8 @@ export const analyticsApi = {
         api.post(`/analytics/track-view?resource=${resource}&resourceId=${resourceId}`),
     tasksByStatus: () => api.get('/analytics/tasks/by-status'),
     tasksByPriority: () => api.get('/analytics/tasks/by-priority'),
+    tasksByList: () => api.get('/analytics/tasks/by-list'),
+    tasksByAssignee: () => api.get('/analytics/tasks/by-assignee'),
     activity: () => api.get('/analytics/activity'),
     health: () => api.get('/analytics/health'),
 };

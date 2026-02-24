@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateMessageDto } from './dto/message.dto';
 import { RealtimeGateway } from '../../realtime/realtime.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class MessagesService {
     constructor(
         private readonly prisma: PrismaService,
-        private readonly realtimeGateway: RealtimeGateway
+        private readonly realtimeGateway: RealtimeGateway,
+        private readonly notificationsService: NotificationsService
     ) { }
 
     async create(userId: string, orgId: string, dto: CreateMessageDto) {
@@ -33,6 +35,51 @@ export class MessagesService {
         const targetId = channelId || conversationId;
         const targetType = channelId ? 'CHANNEL' : 'CONVERSATION';
         this.realtimeGateway.notifyNewMessage(orgId, targetId!, targetType, message);
+
+        // Notify members globally of the new message
+        if (channelId) {
+            const members = await this.prisma.channelMember.findMany({
+                where: { channelId, userId: { not: userId } },
+                select: { userId: true }
+            });
+            for (const member of members) {
+                this.realtimeGateway.emitToUser(member.userId, 'message.notify', {
+                    targetId,
+                    targetType,
+                    message
+                });
+
+                await this.notificationsService.create({
+                    orgId,
+                    userId: member.userId,
+                    type: 'SYSTEM',
+                    title: `New Team message from ${message.user.name}`,
+                    body: message.content,
+                    metadata: { isChat: true, targetId, targetType }
+                });
+            }
+        } else if (conversationId) {
+            const members = await this.prisma.conversationMember.findMany({
+                where: { conversationId, userId: { not: userId } },
+                select: { userId: true }
+            });
+            for (const member of members) {
+                this.realtimeGateway.emitToUser(member.userId, 'message.notify', {
+                    targetId,
+                    targetType,
+                    message
+                });
+
+                await this.notificationsService.create({
+                    orgId,
+                    userId: member.userId,
+                    type: 'SYSTEM',
+                    title: `New DM from ${message.user.name}`,
+                    body: message.content,
+                    metadata: { isChat: true, targetId, targetType }
+                });
+            }
+        }
 
         return message;
     }

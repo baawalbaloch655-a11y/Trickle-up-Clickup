@@ -47,6 +47,18 @@ export class AnalyticsController {
         return this.service.getTasksByPriority(orgId);
     }
 
+    @Get('tasks/by-list')
+    @ApiOperation({ summary: 'Task breakdown by list with task details' })
+    getTasksByList(@Headers('x-org-id') orgId: string) {
+        return this.service.getTasksByList(orgId);
+    }
+
+    @Get('tasks/by-assignee')
+    @ApiOperation({ summary: 'Task summary grouped by assignee' })
+    getTasksByAssignee(@Headers('x-org-id') orgId: string) {
+        return this.service.getTasksByAssignee(orgId);
+    }
+
     @Get('activity')
     @ApiOperation({ summary: 'Org activity feed' })
     getActivityFeed(@Headers('x-org-id') orgId: string) {

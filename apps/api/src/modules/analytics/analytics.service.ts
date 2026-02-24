@@ -117,6 +117,51 @@ export class AnalyticsService {
         );
     }
 
+    async getTasksByList(orgId: string) {
+        const lists = await this.prisma.list.findMany({
+            where: { orgId, deletedAt: null },
+            include: {
+                _count: { select: { tasks: { where: { deletedAt: null } } } },
+                tasks: {
+                    where: { deletedAt: null },
+                    select: { id: true, title: true, status: true, priority: true, dueDate: true, assigneeId: true },
+                    take: 20,
+                },
+            },
+            take: 12,
+        });
+        return lists.map(l => ({
+            id: l.id,
+            name: l.name,
+            total: l._count.tasks,
+            tasks: l.tasks,
+            done: l.tasks.filter(t => t.status === 'DONE').length,
+            inProgress: l.tasks.filter(t => t.status === 'IN_PROGRESS').length,
+            todo: l.tasks.filter(t => t.status === 'TODO').length,
+        }));
+    }
+
+    async getTasksByAssignee(orgId: string) {
+        const users = await this.prisma.user.findMany({
+            where: { orgMembers: { some: { orgId } } },
+            select: { id: true, name: true, avatarUrl: true },
+            take: 20,
+        });
+        const results = await Promise.all(
+            users.map(async (u) => ({
+                userId: u.id,
+                name: u.name,
+                avatarUrl: u.avatarUrl,
+                total: await this.prisma.task.count({ where: { orgId, assigneeId: u.id, deletedAt: null } }),
+                done: await this.prisma.task.count({ where: { orgId, assigneeId: u.id, deletedAt: null, status: 'DONE' } }),
+                overdue: await this.prisma.task.count({
+                    where: { orgId, assigneeId: u.id, deletedAt: null, status: { notIn: ['DONE', 'CANCELLED'] }, dueDate: { lt: new Date() } },
+                }),
+            }))
+        );
+        return results.filter(r => r.total > 0);
+    }
+
     async getActivityFeed(orgId: string, take = 50) {
         return this.prisma.auditLog.findMany({
             where: { orgId },

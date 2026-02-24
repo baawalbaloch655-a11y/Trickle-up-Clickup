@@ -28,7 +28,8 @@ export default function Topbar() {
 
         const handleNewNotification = ({ notification }: any) => {
             qc.invalidateQueries({ queryKey: ['notifications', 'unread', activeOrg.id] });
-            if (notification?.title) {
+            // Only toast if it's not a chat notification (since App.tsx handles global chat toasts)
+            if (notification?.title && !notification?.metadata?.isChat) {
                 toast(notification.title, {
                     icon: '🔔',
                     style: {

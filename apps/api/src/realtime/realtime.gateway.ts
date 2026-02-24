@@ -56,6 +56,10 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
 
             client.userId = payload.sub;
             client.userEmail = payload.email;
+
+            // Join personal room for global user-directed events
+            client.join(`user:${client.userId}`);
+
             this.logger.log(`Client connected: ${client.id} (User: ${payload.email})`);
         } catch {
             this.logger.warn(`Unauthorized WS connection attempt: ${client.id}`);
@@ -127,16 +131,16 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
         this.server.to(`user:${userId}`).emit(event, data);
     }
 
-    notifyTaskCreated(orgId: string, projectId: string, taskId: string, actorId: string, data: unknown) {
-        this.emitToOrg(orgId, 'task.created', { orgId, projectId, taskId, actorId, timestamp: new Date().toISOString(), task: data });
+    notifyTaskCreated(orgId: string, listId: string, taskId: string, actorId: string, data: unknown) {
+        this.emitToOrg(orgId, 'task.created', { orgId, listId, taskId, actorId, timestamp: new Date().toISOString(), task: data });
     }
 
-    notifyTaskUpdated(orgId: string, projectId: string, taskId: string, actorId: string, data: unknown) {
-        this.emitToOrg(orgId, 'task.updated', { orgId, projectId, taskId, actorId, timestamp: new Date().toISOString(), task: data });
+    notifyTaskUpdated(orgId: string, listId: string, taskId: string, actorId: string, data: unknown) {
+        this.emitToOrg(orgId, 'task.updated', { orgId, listId, taskId, actorId, timestamp: new Date().toISOString(), task: data });
     }
 
-    notifyTaskDeleted(orgId: string, projectId: string, taskId: string, actorId: string) {
-        this.emitToOrg(orgId, 'task.deleted', { orgId, projectId, taskId, actorId, timestamp: new Date().toISOString() });
+    notifyTaskDeleted(orgId: string, listId: string, taskId: string, actorId: string) {
+        this.emitToOrg(orgId, 'task.deleted', { orgId, listId, taskId, actorId, timestamp: new Date().toISOString() });
     }
 
     notifyNewNotification(userId: string, notification: unknown) {
@@ -179,6 +183,91 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection, OnGa
             userId: client.userId,
             userName: client.userEmail, // Simple fallback
             isTyping: data.isTyping
+        });
+    }
+
+    // ── WebRTC Signaling ──
+
+    @SubscribeMessage('call:initiate')
+    handleCallInitiate(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string; isVideo: boolean; callerName: string; callerAvatarUrl?: string }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('call:incoming', {
+            callerId: client.userId,
+            callerName: data.callerName,
+            callerAvatarUrl: data.callerAvatarUrl,
+            isVideo: data.isVideo,
+        });
+    }
+
+    @SubscribeMessage('call:accept')
+    handleCallAccept(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('call:accepted', {
+            responderId: client.userId,
+        });
+    }
+
+    @SubscribeMessage('call:reject')
+    handleCallReject(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('call:rejected', {
+            responderId: client.userId,
+        });
+    }
+
+    @SubscribeMessage('call:end')
+    handleCallEnd(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('call:ended', {
+            enderId: client.userId,
+        });
+    }
+
+    @SubscribeMessage('webrtc:offer')
+    handleWebRtcOffer(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string; offer: any }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('webrtc:offer', {
+            senderId: client.userId,
+            offer: data.offer,
+        });
+    }
+
+    @SubscribeMessage('webrtc:answer')
+    handleWebRtcAnswer(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string; answer: any }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('webrtc:answer', {
+            senderId: client.userId,
+            answer: data.answer,
+        });
+    }
+
+    @SubscribeMessage('webrtc:ice-candidate')
+    handleWebRtcIceCandidate(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() data: { targetUserId: string; candidate: any }
+    ) {
+        if (!client.userId) return;
+        this.server.to(`user:${data.targetUserId}`).emit('webrtc:ice-candidate', {
+            senderId: client.userId,
+            candidate: data.candidate,
         });
     }
 }

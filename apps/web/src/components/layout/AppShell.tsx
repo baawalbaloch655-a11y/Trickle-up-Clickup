@@ -2,6 +2,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import NotificationPanel from './NotificationPanel';
 import { useUIStore } from '../../store/uiStore';
 import { useAuthStore } from '../../store/authStore';
 import { joinOrgRoom } from '../../lib/socket';
@@ -29,6 +30,7 @@ export default function AppShell() {
                     <Outlet />
                 </main>
             </div>
+            <NotificationPanel />
         </div>
     );
 }

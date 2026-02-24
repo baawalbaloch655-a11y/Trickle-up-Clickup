@@ -11,6 +11,10 @@ export default function ChatPage() {
     const isChannel = !!channelId;
     const targetId = channelId || conversationId || '';
 
+    // Prefer otherUserId passed via navigation state (reliable - avoids API parsing)
+    const stateOtherUserId: string | undefined = (location.state as any)?.otherUserId;
+    const stateOtherUserName: string | undefined = (location.state as any)?.otherUserName;
+
     const { data: channelRes } = useQuery({
         queryKey: ['channel', channelId],
         queryFn: () => channelsApi.get(channelId!),
@@ -25,17 +29,31 @@ export default function ChatPage() {
 
     if (!targetId) return null;
 
-    let title = 'Chat';
+    let title = stateOtherUserName || 'Chat';
     let subtitle = '';
+    let otherUserId: string | undefined = stateOtherUserId;
 
-    if (isChannel && channelRes?.data?.data) {
-        title = channelRes.data.data.name;
-        subtitle = channelRes.data.data.description || 'Public Channel';
-    } else if (!isChannel && conversationRes?.data?.data) {
-        const conv = conversationRes.data.data;
-        const otherMember = conv.members.find((m: any) => m.userId !== user?.id)?.user;
-        title = conv.isGroup ? (conv.name || 'Group Chat') : (otherMember?.name || 'Direct Message');
-        subtitle = conv.isGroup ? `${conv.members.length} members` : 'Personal conversation';
+    if (isChannel) {
+        // Try both data shapes (wrapped and direct)
+        const channelData = channelRes?.data?.data || channelRes?.data;
+        if (channelData) {
+            title = channelData.name || 'Channel';
+            subtitle = channelData.description || 'Public Channel';
+        }
+    } else {
+        // Try both data shapes
+        const conv = conversationRes?.data?.data || conversationRes?.data;
+        if (conv) {
+            const otherMember = conv.members?.find((m: any) => m.userId !== user?.id)?.user;
+            title = conv.isGroup
+                ? (conv.name || 'Group Chat')
+                : (otherMember?.name || stateOtherUserName || 'Direct Message');
+            subtitle = conv.isGroup ? `${conv.members?.length} members` : 'Personal conversation';
+            // Prefer navigation state, fall back to parsed member
+            if (!otherUserId) {
+                otherUserId = otherMember?.id;
+            }
+        }
     }
 
     return (
@@ -45,6 +63,7 @@ export default function ChatPage() {
                 targetType={isChannel ? 'CHANNEL' : 'CONVERSATION'}
                 title={title}
                 subtitle={subtitle}
+                otherUserId={otherUserId}
             />
         </div>
     );
