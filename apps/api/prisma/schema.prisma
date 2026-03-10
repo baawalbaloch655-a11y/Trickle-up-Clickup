@@ -165,6 +165,7 @@ model Department {
   teams   Team[]
   members OrgMember[]
 
+  @@unique([orgId, name])
   @@map("departments")
 }
 
@@ -180,6 +181,7 @@ model Team {
   department Department  @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   members    OrgMember[]
 
+  @@unique([departmentId, name])
   @@map("teams")
 }
 

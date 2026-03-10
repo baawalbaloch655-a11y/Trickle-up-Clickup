@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     X, Plus, Loader2, ChevronRight, Flag, Calendar,
@@ -55,6 +55,14 @@ export default function CreateTaskModal({ open, lists, defaultListId, defaultSta
     };
 
     const handleClose = () => { reset(); onClose(); };
+
+    // Sync state when lists load or modal is opened
+    useEffect(() => {
+        if (open) {
+            setListId(defaultListId || lists[0]?.id || '');
+            setStatus(defaultStatus || 'TODO');
+        }
+    }, [open, lists, defaultListId, defaultStatus]);
 
     // Fetch assignable org members
     const { data: membersRes } = useQuery({
@@ -161,6 +169,7 @@ export default function CreateTaskModal({ open, lists, defaultListId, defaultSta
                                 onChange={(e) => setListId(e.target.value)}
                                 className="w-full bg-gray-900 border border-gray-800 rounded-lg px-2.5 py-2 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-accent-500/40 focus:border-accent-500/40 transition-all"
                             >
+                                {!listId && <option value="" disabled>Select a list...</option>}
                                 {lists.map(l => (
                                     <option key={l.id} value={l.id}>
                                         {l.folderName ? `${l.folderName} / ${l.name}` : l.name}

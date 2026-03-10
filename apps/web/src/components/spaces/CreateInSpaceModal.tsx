@@ -12,6 +12,8 @@ interface CreateInSpaceModalProps {
     open: boolean;
     spaceId: string;
     spaceName: string;
+    folderId?: string;
+    folderName?: string;
     onClose: () => void;
 }
 
@@ -20,7 +22,7 @@ const LIST_COLORS = [
     '#10b981', '#eab308', '#f97316', '#ef4444', '#ec4899',
 ];
 
-export default function CreateInSpaceModal({ open, spaceId, spaceName, onClose }: CreateInSpaceModalProps) {
+export default function CreateInSpaceModal({ open, spaceId, spaceName, folderId, folderName, onClose }: CreateInSpaceModalProps) {
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
@@ -36,6 +38,7 @@ export default function CreateInSpaceModal({ open, spaceId, spaceName, onClose }
         mutationFn: () => foldersApi.create(spaceId, { name: name.trim() }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['spaces'] });
+            queryClient.invalidateQueries({ queryKey: ['space', spaceId] });
             toast.success(`Folder "${name}" created!`);
             reset();
             onClose();
@@ -46,10 +49,11 @@ export default function CreateInSpaceModal({ open, spaceId, spaceName, onClose }
     });
 
     const { mutate: createList, isPending: listPending } = useMutation({
-        mutationFn: () => listsApi.create({ name: name.trim(), spaceId, color }),
+        mutationFn: () => listsApi.create({ name: name.trim(), spaceId, folderId, color }),
         onSuccess: (res) => {
             const list = res.data?.data;
             queryClient.invalidateQueries({ queryKey: ['spaces'] });
+            queryClient.invalidateQueries({ queryKey: ['space', spaceId] });
             toast.success(`List "${name}" created!`);
             reset();
             onClose();
@@ -80,9 +84,9 @@ export default function CreateInSpaceModal({ open, spaceId, spaceName, onClose }
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 pb-4 border-b border-gray-800/60">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-100">Add to Space</h2>
+                        <h2 className="text-lg font-bold text-gray-100">Add to {folderId ? 'Folder' : 'Space'}</h2>
                         <p className="text-xs text-gray-500 mt-0.5">
-                            Inside <span className="text-accent-400 font-medium">{spaceName}</span>
+                            Inside <span className="text-accent-400 font-medium">{folderName || spaceName}</span>
                         </p>
                     </div>
                     <button
@@ -95,40 +99,42 @@ export default function CreateInSpaceModal({ open, spaceId, spaceName, onClose }
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     {/* Type Selector */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setType('list')}
-                            className={clsx(
-                                "flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all",
-                                type === 'list'
-                                    ? "bg-accent-600/10 border-accent-500/40 shadow-sm"
-                                    : "bg-gray-900 border-gray-800 hover:border-gray-700"
-                            )}
-                        >
-                            <Hash size={16} className={type === 'list' ? "text-accent-400" : "text-gray-500"} />
-                            <div className="text-left">
-                                <p className={clsx("text-sm font-semibold", type === 'list' ? "text-gray-100" : "text-gray-400")}>List</p>
-                                <p className="text-[10px] text-gray-500">For tasks & work</p>
-                            </div>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setType('folder')}
-                            className={clsx(
-                                "flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all",
-                                type === 'folder'
-                                    ? "bg-accent-600/10 border-accent-500/40 shadow-sm"
-                                    : "bg-gray-900 border-gray-800 hover:border-gray-700"
-                            )}
-                        >
-                            <Folder size={16} className={type === 'folder' ? "text-accent-400" : "text-gray-500"} />
-                            <div className="text-left">
-                                <p className={clsx("text-sm font-semibold", type === 'folder' ? "text-gray-100" : "text-gray-400")}>Folder</p>
-                                <p className="text-[10px] text-gray-500">Group lists together</p>
-                            </div>
-                        </button>
-                    </div>
+                    {!folderId && (
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setType('list')}
+                                className={clsx(
+                                    "flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all",
+                                    type === 'list'
+                                        ? "bg-accent-600/10 border-accent-500/40 shadow-sm"
+                                        : "bg-gray-900 border-gray-800 hover:border-gray-700"
+                                )}
+                            >
+                                <Hash size={16} className={type === 'list' ? "text-accent-400" : "text-gray-500"} />
+                                <div className="text-left">
+                                    <p className={clsx("text-sm font-semibold", type === 'list' ? "text-gray-100" : "text-gray-400")}>List</p>
+                                    <p className="text-[10px] text-gray-500">For tasks & work</p>
+                                </div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setType('folder')}
+                                className={clsx(
+                                    "flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all",
+                                    type === 'folder'
+                                        ? "bg-accent-600/10 border-accent-500/40 shadow-sm"
+                                        : "bg-gray-900 border-gray-800 hover:border-gray-700"
+                                )}
+                            >
+                                <Folder size={16} className={type === 'folder' ? "text-accent-400" : "text-gray-500"} />
+                                <div className="text-left">
+                                    <p className={clsx("text-sm font-semibold", type === 'folder' ? "text-gray-100" : "text-gray-400")}>Folder</p>
+                                    <p className="text-[10px] text-gray-500">Group lists together</p>
+                                </div>
+                            </button>
+                        </div>
+                    )}
 
                     {/* Name */}
                     <div>

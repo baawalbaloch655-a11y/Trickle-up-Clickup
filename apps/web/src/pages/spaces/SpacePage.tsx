@@ -3,6 +3,7 @@ import { useParams, NavLink, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { spacesApi, tasksApi, listsApi, usersApi, orgsApi } from '../../lib/api';
 import CreateTaskModal from '../../components/tasks/CreateTaskModal';
+import CreateInSpaceModal from '../../components/spaces/CreateInSpaceModal';
 import TaskRow from '../../components/tasks/TaskRow';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -46,11 +47,13 @@ export default function SpacePage() {
     const [activeTab, setActiveTab] = useState('list');
     const [collapsedStatuses, setCollapsedStatuses] = useState<Record<string, boolean>>({});
     const [expandedLists, setExpandedLists] = useState<Record<string, boolean>>({});
+    const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [addingToStatus, setAddingToStatus] = useState<string | null>(null);
     const [addingToList, setAddingToList] = useState<string | null>(null);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
     const [createTaskOpen, setCreateTaskOpen] = useState(false);
+    const [activeSpaceForCreate, setActiveSpaceForCreate] = useState<{ id: string; name: string, folderId?: string, folderName?: string } | null>(null);
     // Board-specific state
     const [boardAddingToStatus, setBoardAddingToStatus] = useState<string | null>(null);
     const [boardNewTaskTitle, setBoardNewTaskTitle] = useState('');
@@ -178,6 +181,10 @@ export default function SpacePage() {
         setExpandedLists(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    const toggleFolder = (id: string) => {
+        setExpandedFolders(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
     if (spaceLoading) {
         return (
             <div className="flex items-center justify-center h-full bg-[#0a0a0a]">
@@ -253,7 +260,14 @@ export default function SpacePage() {
                                         <button className="p-0.5 rounded text-gray-600 hover:text-gray-300" onClick={(e) => { e.stopPropagation(); }}>
                                             <MoreHorizontal size={12} />
                                         </button>
-                                        <button className="p-0.5 rounded text-gray-600 hover:text-gray-300" onClick={(e) => { e.stopPropagation(); }}>
+                                        <button
+                                            className="p-0.5 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setActiveSpaceForCreate({ id: s.id, name: s.name });
+                                            }}
+                                            title={`Add to ${s.name}`}
+                                        >
                                             <Plus size={12} />
                                         </button>
                                     </div>
@@ -278,25 +292,51 @@ export default function SpacePage() {
                                         {/* Folders */}
                                         {s.folders?.map((folder: any) => (
                                             <div key={folder.id} className="space-y-0.5">
-                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer hover:bg-gray-800/30 transition-colors">
-                                                    <Folder size={11} />
-                                                    <span className="truncate">{folder.name}</span>
-                                                </div>
-                                                <div className="ml-3 space-y-0.5">
-                                                    {folder.lists?.map((list: any) => (
-                                                        <NavLink
-                                                            key={list.id}
-                                                            to={`/lists/${list.id}`}
-                                                            className="flex items-center gap-2 px-2 py-1 rounded-md text-[11px] text-gray-600 hover:text-gray-300 hover:bg-gray-800/30 transition-colors"
+                                                <div
+                                                    className="group flex items-center justify-between px-2 py-1 rounded-md text-[11px] text-gray-500 cursor-pointer hover:bg-gray-800/30 hover:text-gray-300 transition-colors"
+                                                    onClick={() => toggleFolder(folder.id)}
+                                                >
+                                                    <div className="flex items-center gap-1.5 truncate">
+                                                        <ChevronDown
+                                                            size={9}
+                                                            className={clsx("transition-transform duration-200 flex-shrink-0", expandedFolders[folder.id] ? "rotate-0" : "-rotate-90")}
+                                                        />
+                                                        <Folder size={11} />
+                                                        <span className="truncate">{folder.name}</span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button
+                                                            className="p-0.5 rounded text-gray-600 hover:text-gray-300 hover:bg-gray-800 transition-colors"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setActiveSpaceForCreate({ id: s.id, name: s.name, folderId: folder.id, folderName: folder.name });
+                                                                if (!expandedFolders[folder.id]) toggleFolder(folder.id);
+                                                            }}
+                                                            title={`Add to ${folder.name}`}
                                                         >
-                                                            <Hash size={10} />
-                                                            <span className="truncate">{list.name}</span>
-                                                            {list._count?.tasks !== undefined && (
-                                                                <span className="text-[9px] text-gray-700 ml-auto">{list._count.tasks}</span>
-                                                            )}
-                                                        </NavLink>
-                                                    ))}
+                                                            <Plus size={12} />
+                                                        </button>
+                                                    </div>
                                                 </div>
+
+                                                {expandedFolders[folder.id] && (
+                                                    <div className="ml-3 space-y-0.5 border-l border-gray-800/40 pl-1.5">
+                                                        {folder.lists?.map((list: any) => (
+                                                            <NavLink
+                                                                key={list.id}
+                                                                to={`/lists/${list.id}`}
+                                                                className="flex items-center gap-2 px-2 py-1 rounded-md text-[11px] text-gray-600 hover:text-gray-300 hover:bg-gray-800/30 transition-colors"
+                                                            >
+                                                                <Hash size={10} />
+                                                                <span className="truncate">{list.name}</span>
+                                                                {list._count?.tasks !== undefined && (
+                                                                    <span className="text-[9px] text-gray-700 ml-auto">{list._count.tasks}</span>
+                                                                )}
+                                                            </NavLink>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -857,6 +897,16 @@ export default function SpacePage() {
                 ]}
                 defaultListId={allListIds[0]}
                 onClose={() => setCreateTaskOpen(false)}
+            />
+
+            {/* Create In Space Modal */}
+            <CreateInSpaceModal
+                open={!!activeSpaceForCreate}
+                spaceId={activeSpaceForCreate?.id || ''}
+                spaceName={activeSpaceForCreate?.name || ''}
+                folderId={activeSpaceForCreate?.folderId}
+                folderName={activeSpaceForCreate?.folderName}
+                onClose={() => setActiveSpaceForCreate(null)}
             />
         </div>
     );

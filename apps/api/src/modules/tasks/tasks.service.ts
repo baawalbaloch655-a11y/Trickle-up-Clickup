@@ -32,6 +32,32 @@ export class TasksService {
             statusId = defaultStatus?.id || '';
         }
 
+        // If statusId is passed as a category key directly (e.g. IN_REVIEW) from the frontend fallback
+        if (['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'].includes(statusId)) {
+            let catStatus = await this.prisma.status.findFirst({
+                where: { orgId, category: statusId }
+            });
+            if (!catStatus) {
+                const colors: Record<string, string> = {
+                    'TODO': '#94a3b8', 'IN_PROGRESS': '#3b82f6',
+                    'IN_REVIEW': '#eab308', 'DONE': '#10b981'
+                };
+                const names: Record<string, string> = {
+                    'TODO': 'To Do', 'IN_PROGRESS': 'In Progress',
+                    'IN_REVIEW': 'In Review', 'DONE': 'Done'
+                };
+                catStatus = await this.prisma.status.create({
+                    data: {
+                        orgId,
+                        name: names[statusId] || statusId,
+                        category: statusId,
+                        color: colors[statusId] || '#94a3b8'
+                    }
+                });
+            }
+            statusId = catStatus.id;
+        }
+
         const { status, ...restDto } = dto;
 
         const task = await this.prisma.task.create({
@@ -155,9 +181,36 @@ export class TasksService {
 
     async move(orgId: string, taskId: string, userId: string, dto: MoveTaskDto) {
         const previousTask = await this.findOne(orgId, taskId);
+
+        let statusIdToUse = dto.statusId;
+        if (statusIdToUse && ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE'].includes(statusIdToUse)) {
+            let catStatus = await this.prisma.status.findFirst({
+                where: { orgId, category: statusIdToUse },
+            });
+            if (!catStatus) {
+                const colors: Record<string, string> = {
+                    'TODO': '#94a3b8', 'IN_PROGRESS': '#3b82f6',
+                    'IN_REVIEW': '#eab308', 'DONE': '#10b981'
+                };
+                const names: Record<string, string> = {
+                    'TODO': 'To Do', 'IN_PROGRESS': 'In Progress',
+                    'IN_REVIEW': 'In Review', 'DONE': 'Done'
+                };
+                catStatus = await this.prisma.status.create({
+                    data: {
+                        orgId,
+                        name: names[statusIdToUse] || statusIdToUse,
+                        category: statusIdToUse,
+                        color: colors[statusIdToUse] || '#eab308'
+                    }
+                });
+            }
+            statusIdToUse = catStatus.id;
+        }
+
         const task = await this.prisma.task.update({
             where: { id: taskId },
-            data: { statusId: dto.statusId, order: dto.order },
+            data: { statusId: statusIdToUse || undefined, order: dto.order },
             include: { status: true },
         });
 

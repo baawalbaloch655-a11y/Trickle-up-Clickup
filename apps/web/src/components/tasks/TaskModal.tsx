@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Calendar, User, Clock, CheckSquare, Link as LinkIcon, AlertCircle } from 'lucide-react';
-import { tasksApi } from '../../lib/api';
+import { tasksApi, usersApi, orgsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import TimeTracking from './TimeTracking';
@@ -14,6 +15,23 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
         queryFn: () => tasksApi.get(listId, taskId).then(r => r.data.data),
         enabled: !!taskId && !!listId,
     });
+
+    const activeOrg = useAuthStore(s => s.activeOrg);
+
+    const { data: usersRes } = useQuery({
+        queryKey: ['org-users', activeOrg?.id],
+        queryFn: () => usersApi.search(''),
+        enabled: !!activeOrg,
+    });
+    const users = usersRes?.data?.data || [];
+
+    const { data: statusesRes } = useQuery({
+        queryKey: ['org-statuses', activeOrg?.id],
+        queryFn: () => orgsApi.statuses(activeOrg!.id),
+        enabled: !!activeOrg,
+        staleTime: 120_000,
+    });
+    const orgStatuses: any[] = statusesRes?.data?.data || statusesRes?.data || [];
 
     const updateTask = useMutation({
         mutationFn: (data: any) => tasksApi.update(listId, taskId, data),
@@ -43,6 +61,11 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
         onSuccess: () => qc.invalidateQueries({ queryKey: ['task', taskId] })
     });
 
+    const removeChecklistItem = useMutation({
+        mutationFn: ({ checklistId, itemId }: { checklistId: string, itemId: string }) => tasksApi.removeChecklistItem(listId, taskId, checklistId, itemId),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['task', taskId] })
+    });
+
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
     const [newChecklistName, setNewChecklistName] = useState('');
     const [newItemNames, setNewItemNames] = useState<Record<string, string>>({});
@@ -53,6 +76,14 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
             qc.invalidateQueries({ queryKey: ['task', taskId] });
             qc.invalidateQueries({ queryKey: ['tasks', listId] });
             setNewSubtaskTitle('');
+        }
+    });
+
+    const deleteSubtask = useMutation({
+        mutationFn: (subtaskId: string) => tasksApi.delete(listId, subtaskId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['task', taskId] });
+            qc.invalidateQueries({ queryKey: ['tasks', listId] });
         }
     });
 
@@ -88,8 +119,8 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
                     <div className="flex items-center gap-3 w-full">
                         <span className="text-xs font-mono text-gray-500 uppercase tracking-wider">{task.id.slice(0, 8)}</span>
                         <input
-                            value={task.title}
-                            onChange={(e) => updateTask.mutate({ title: e.target.value })}
+                            defaultValue={task.title}
+                            onBlur={(e) => updateTask.mutate({ title: e.target.value })}
                             className="bg-transparent border-none text-xl font-bold text-gray-100 flex-1 focus:outline-none focus:ring-0"
                         />
                     </div>
@@ -120,15 +151,16 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
                                 {(task.subtasks || []).map((subtask: any) => (
                                     <div key={subtask.id} className="flex items-center justify-between bg-gray-800/30 border border-gray-800 rounded-lg p-3 hover:border-gray-700 transition-colors">
                                         <div className="flex items-center gap-3">
-                                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: subtask.status?.color || '#3b82f6' }} />
-                                            <span className="text-sm text-gray-200 font-medium">{subtask.title}</span>
+                                            {subtask.assignee && (
+                                                <div className="flex items-center gap-1.5 badge bg-gray-900 text-gray-400">
+                                                    <User size={12} />
+                                                    <span className="text-xs">{subtask.assignee.name}</span>
+                                                </div>
+                                            )}
+                                            <button onClick={() => deleteSubtask.mutate(subtask.id)} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <X size={14} />
+                                            </button>
                                         </div>
-                                        {subtask.assignee && (
-                                            <div className="flex items-center gap-1.5 badge bg-gray-900 text-gray-400">
-                                                <User size={12} />
-                                                <span className="text-xs">{subtask.assignee.name}</span>
-                                            </div>
-                                        )}
                                     </div>
                                 ))}
 
@@ -168,7 +200,7 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
                                         </div>
                                         <div className="space-y-2">
                                             {(checklist.items || []).sort((a: any, b: any) => a.order - b.order).map((item: any) => (
-                                                <div key={item.id} className="flex items-center gap-2 text-sm text-gray-300 hover:bg-gray-800/50 p-1.5 rounded -mx-1.5">
+                                                <div key={item.id} className="flex items-center gap-2 text-sm text-gray-300 hover:bg-gray-800/50 p-1.5 rounded -mx-1.5 group">
                                                     <input
                                                         type="checkbox"
                                                         checked={item.isResolved}
@@ -178,6 +210,9 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
                                                     <span className={clsx("flex-1", item.isResolved && "line-through text-gray-500")}>
                                                         {item.name}
                                                     </span>
+                                                    <button onClick={() => removeChecklistItem.mutate({ checklistId: checklist.id, itemId: item.id })} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <X size={14} />
+                                                    </button>
                                                 </div>
                                             ))}
                                             <div className="flex gap-2 mt-2">
@@ -282,18 +317,39 @@ export default function TaskModal({ taskId, listId, onClose }: { taskId: string,
                         {/* Status */}
                         <div>
                             <span className="text-xs text-gray-500 font-medium mb-1.5 block">STATUS</span>
-                            <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-800/50 backdrop-blur rounded font-medium text-sm border border-gray-700 w-fit">
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: task.status?.color || '#3b82f6' }} />
-                                {task.status?.name || 'To Do'}
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: task.status?.color || '#3b82f6' }} />
+                                </div>
+                                <select
+                                    value={task.statusId}
+                                    onChange={(e) => updateTask.mutate({ statusId: e.target.value })}
+                                    className="bg-gray-800/50 border border-gray-700 text-gray-200 text-sm rounded-lg focus:ring-0 focus:border-indigo-500 block w-full pl-8 p-2 appearance-none outline-none cursor-pointer font-medium"
+                                >
+                                    {orgStatuses.map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
                         {/* Assignee */}
                         <div>
                             <span className="text-xs text-gray-500 font-medium mb-1.5 block">ASSIGNEE</span>
-                            <div className="flex items-center gap-2 text-sm text-gray-300 bg-gray-800/30 p-2 rounded-lg border border-gray-800/50">
-                                <User size={14} className="text-gray-400" />
-                                {task.assignee?.name || 'Unassigned'}
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <User size={14} className="text-gray-400" />
+                                </div>
+                                <select
+                                    value={task.assigneeId || ''}
+                                    onChange={(e) => updateTask.mutate({ assigneeId: e.target.value || null })}
+                                    className="bg-gray-800/50 border border-gray-700 text-gray-200 text-sm rounded-lg focus:ring-0 focus:border-indigo-500 block w-full pl-8 p-2 appearance-none outline-none cursor-pointer"
+                                >
+                                    <option value="">Unassigned</option>
+                                    {users.map((u: any) => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 

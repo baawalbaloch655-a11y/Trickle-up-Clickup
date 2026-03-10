@@ -73,9 +73,14 @@ export default function HomeDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
                     {/* Recents Widget */}
                     <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 flex flex-col h-[400px]">
-                        <div className="flex items-center gap-2 mb-6">
-                            <History size={18} className="text-gray-400" />
-                            <h3 className="font-bold text-gray-200">Recents</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-2">
+                                <History size={18} className="text-gray-400" />
+                                <h3 className="font-bold text-gray-200">Recents</h3>
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium">
+                                {format(new Date(), 'EEEE, MMMM d')}
+                            </span>
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-1 custom-scrollbar pr-2">
                             {homeData.recents.length === 0 ? (
@@ -155,9 +160,14 @@ export default function HomeDashboard() {
                                 <h3 className="font-bold text-gray-200">Personal List</h3>
                                 <AlertCircle size={14} className="text-gray-600" />
                             </div>
-                            <button className="text-gray-500 hover:text-white transition-colors">
-                                <Settings size={16} />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500 font-medium">
+                                    {format(new Date(), 'EEEE, MMMM d')}
+                                </span>
+                                <button className="text-gray-500 hover:text-white transition-colors">
+                                    <Settings size={16} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
                             {homeData.personalList?.length === 0 ? (
@@ -187,9 +197,14 @@ export default function HomeDashboard() {
 
                     {/* Assigned Comments Widget */}
                     <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 flex flex-col h-[400px]">
-                        <div className="flex items-center gap-2 mb-6">
-                            <MessageSquare size={18} className="text-gray-400" />
-                            <h3 className="font-bold text-gray-200">Assigned comments</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare size={18} className="text-gray-400" />
+                                <h3 className="font-bold text-gray-200">Assigned comments</h3>
+                            </div>
+                            <span className="text-xs text-gray-500 font-medium">
+                                {format(new Date(), 'EEEE, MMMM d')}
+                            </span>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center text-center">
                             {homeData.assignedComments?.length === 0 ? (
@@ -220,24 +235,29 @@ export default function HomeDashboard() {
 
                     {/* My Work Card */}
                     <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 flex flex-col">
-                        <div className="mb-6">
-                            <h3 className="font-bold text-gray-200 mb-4">My Work</h3>
-                            <div className="flex items-center gap-1 p-1 bg-black rounded-xl border border-gray-800 w-fit">
-                                {['todo', 'done', 'delegated'].map((tab) => (
-                                    <button
-                                        key={tab}
-                                        onClick={() => setActiveWorkTab(tab as any)}
-                                        className={clsx(
-                                            "px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all",
-                                            activeWorkTab === tab
-                                                ? "bg-gray-800 text-white shadow-glow-sm"
-                                                : "text-gray-500 hover:text-gray-300"
-                                        )}
-                                    >
-                                        {tab}
-                                    </button>
-                                ))}
+                        <div className="mb-6 flex items-start justify-between">
+                            <div>
+                                <h3 className="font-bold text-gray-200 mb-4">My Work</h3>
+                                <div className="flex items-center gap-1 p-1 bg-black rounded-xl border border-gray-800 w-fit">
+                                    {['todo', 'done', 'delegated'].map((tab) => (
+                                        <button
+                                            key={tab}
+                                            onClick={() => setActiveWorkTab(tab as any)}
+                                            className={clsx(
+                                                "px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all",
+                                                activeWorkTab === tab
+                                                    ? "bg-gray-800 text-white shadow-glow-sm"
+                                                    : "text-gray-500 hover:text-gray-300"
+                                            )}
+                                        >
+                                            {tab}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
+                            <span className="text-xs text-gray-500 font-medium mt-1">
+                                {format(new Date(), 'EEEE, MMMM d')}
+                            </span>
                         </div>
                         <div className="flex-1 space-y-4">
                             {homeData.myWork[activeWorkTab].length === 0 ? (
@@ -297,9 +317,14 @@ export default function HomeDashboard() {
                     <div className="bg-gray-900/40 border border-gray-800 rounded-2xl p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="font-bold text-gray-200">Assigned to me</h3>
-                            <button className="text-gray-500 hover:text-white transition-colors">
-                                <MoreHorizontal size={18} />
-                            </button>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500 font-medium">
+                                    {format(new Date(), 'EEEE, MMMM d')}
+                                </span>
+                                <button className="text-gray-500 hover:text-white transition-colors">
+                                    <MoreHorizontal size={18} />
+                                </button>
+                            </div>
                         </div>
                         <div className="flex-1 overflow-x-auto">
                             <table className="w-full text-left text-xs">

@@ -49,14 +49,20 @@ async function main() {
     console.log(`✅ Organization created: ${org.name}`);
 
     // 3. Departments, Teams, and Skills
-    const dept = await prisma.department.create({
-        data: { orgId: org.id, name: 'Engineering', description: 'Software Development Team' }
+    const dept = await prisma.department.upsert({
+        where: { orgId_name: { orgId: org.id, name: 'Engineering' } },
+        update: {},
+        create: { orgId: org.id, name: 'Engineering', description: 'Software Development Team' }
     });
-    const team = await prisma.team.create({
-        data: { departmentId: dept.id, name: 'Frontend Squad', description: 'React and UI experts' }
+    const team = await prisma.team.upsert({
+        where: { departmentId_name: { departmentId: dept.id, name: 'Frontend Squad' } },
+        update: {},
+        create: { departmentId: dept.id, name: 'Frontend Squad', description: 'React and UI experts' }
     });
-    const skill = await prisma.employeeSkill.create({
-        data: { orgId: org.id, name: 'React.js' }
+    const skill = await prisma.employeeSkill.upsert({
+        where: { orgId_name: { orgId: org.id, name: 'React.js' } },
+        update: {},
+        create: { orgId: org.id, name: 'React.js' }
     });
     console.log(`✅ HR structure created`);
 
@@ -95,7 +101,11 @@ async function main() {
         where: { id: 'seed-space-all' }, update: {},
         create: { id: 'seed-space-all', orgId: org.id, name: 'Global Operations', color: '#6366f1' },
     });
-    await prisma.spaceMember.create({ data: { spaceId: space.id, userId: hydra.id } });
+    await prisma.spaceMember.upsert({
+        where: { spaceId_userId: { spaceId: space.id, userId: hydra.id } },
+        update: {},
+        create: { spaceId: space.id, userId: hydra.id }
+    });
 
     const folder = await prisma.folder.upsert({
         where: { id: 'seed-folder-all' }, update: {},
@@ -124,6 +134,17 @@ async function main() {
     const tag2 = await prisma.tag.upsert({
         where: { orgId_name: { orgId: org.id, name: 'API' } }, update: {}, create: { orgId: org.id, name: 'API', color: '#8b5cf6' }
     });
+
+    // Clean up task related data before recreating to avoid unique constraint issues
+    await prisma.taskDependency.deleteMany();
+    await prisma.checklistItem.deleteMany();
+    await prisma.checklist.deleteMany();
+    await prisma.timeEntry.deleteMany();
+    await prisma.taskComment.deleteMany();
+    await prisma.customFieldValue.deleteMany();
+    await prisma.formSubmission.deleteMany();
+    await prisma.task.deleteMany({ where: { listId: list.id } });
+    await prisma.customField.deleteMany({ where: { orgId: org.id } });
 
     // 8. Custom Fields
     const cf = await prisma.customField.create({
@@ -171,6 +192,28 @@ async function main() {
         data: { taskId: task1.id, userId: hydra.id, content: 'Making good progress on this!' }
     });
     console.log(`✅ Tasks and all attributes (Dependencies, Checklists, Comments, TimeEntries, Custom Fields) created`);
+
+    // Clean up forms, goals, etc.
+    await prisma.formField.deleteMany();
+    await prisma.form.deleteMany({ where: { orgId: org.id } });
+    await prisma.goalTarget.deleteMany();
+    await prisma.goal.deleteMany({ where: { orgId: org.id } });
+    await prisma.message.deleteMany();
+    await prisma.channelMember.deleteMany();
+    await prisma.channel.deleteMany({ where: { orgId: org.id } });
+    await prisma.conversationMember.deleteMany();
+    await prisma.conversation.deleteMany({ where: { orgId: org.id } });
+    await prisma.document.deleteMany({ where: { orgId: org.id } });
+    await prisma.automationAction.deleteMany();
+    await prisma.automationRule.deleteMany({ where: { orgId: org.id } });
+    await prisma.dashboardWidget.deleteMany();
+    await prisma.dashboard.deleteMany({ where: { orgId: org.id } });
+    await prisma.integration.deleteMany({ where: { orgId: org.id } });
+    await prisma.webhook.deleteMany({ where: { orgId: org.id } });
+    await prisma.aiOperation.deleteMany({ where: { orgId: org.id } });
+    await prisma.favorite.deleteMany({ where: { orgId: org.id } });
+    await prisma.notification.deleteMany({ where: { orgId: org.id } });
+    await prisma.auditLog.deleteMany({ where: { orgId: org.id } });
 
     // 10. Forms
     const form = await prisma.form.create({

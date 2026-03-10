@@ -108,14 +108,20 @@ export default function ProjectDetailPage() {
 
     // Create task
     const createTask = useMutation({
-        mutationFn: (data: { title: string; statusId: string }) =>
-            tasksApi.create(listId!, data),
-        onSuccess: (res) => {
+        mutationFn: (data: { title: string; statusId: string; colKey: string }) =>
+            tasksApi.create(listId!, { title: data.title, statusId: data.statusId }),
+        onSuccess: (res, variables) => {
             const newTask = res.data?.data ?? res.data;
+            const targetStatus = orgStatuses.find((s: any) => s.id === variables.statusId);
+            const enrichedTask = {
+                ...newTask,
+                status: targetStatus || variables.colKey // fallback to colKey if targetStatus not found
+            };
+
             qc.setQueryData(['tasks', listId], (old: any) => {
-                if (!old) return [newTask];
+                if (!old) return [enrichedTask];
                 if (old.some((t: any) => t.id === newTask.id)) return old;
-                return [...old, newTask];
+                return [...old, enrichedTask];
             });
             setNewTaskTitle('');
             setAddingToCol(null);
@@ -189,7 +195,7 @@ export default function ProjectDetailPage() {
 
     const handleCreate = (colKey: string) => {
         if (!newTaskTitle.trim()) return;
-        createTask.mutate({ title: newTaskTitle.trim(), statusId: getStatusId(colKey) });
+        createTask.mutate({ title: newTaskTitle.trim(), statusId: getStatusId(colKey), colKey });
     };
 
     return (

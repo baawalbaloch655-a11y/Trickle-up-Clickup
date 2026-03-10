@@ -33,6 +33,7 @@ import SpacePage from './pages/spaces/SpacePage';
 import GoalsPage from './pages/goals/GoalsPage';
 import DocsListPage from './pages/docs/DocsListPage';
 import DocEditorPage from './pages/docs/DocEditorPage';
+import PlannerPage from './pages/PlannerPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -211,7 +212,7 @@ export default function App() {
                         <Route path="goals" element={<GoalsPage />} />
                         <Route path="docs" element={<DocsListPage />} />
                         <Route path="docs/:id" element={<DocEditorPage />} />
-                        <Route path="planner" element={<ComingSoonPage />} />
+                        <Route path="planner" element={<PlannerPage />} />
                         <Route path="ai" element={<Navigate to="/settings/integrations?tab=ai" replace />} />
                         <Route path="whiteboards" element={<ComingSoonPage />} />
                         <Route path="forms" element={<FormsListPage />} />

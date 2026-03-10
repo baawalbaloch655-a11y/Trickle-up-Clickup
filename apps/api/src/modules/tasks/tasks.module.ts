@@ -6,9 +6,11 @@ import { AutomationsModule } from '../automations/automations.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 
+import { GlobalTasksController } from './global-tasks.controller';
+
 @Module({
     imports: [RealtimeModule, AutomationsModule, NotificationsModule, IntegrationsModule],
-    controllers: [TasksController],
+    controllers: [TasksController, GlobalTasksController],
     providers: [TasksService],
     exports: [TasksService]
 })

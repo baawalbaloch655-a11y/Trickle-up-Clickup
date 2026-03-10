@@ -153,6 +153,15 @@ export const tasksApi = {
         api.delete(`/lists/${listId}/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`),
 };
 
+export const globalTasksApi = {
+    myTasks: (params?: { startDate?: string, endDate?: string }) => {
+        const query = new URLSearchParams();
+        if (params?.startDate) query.append('startDate', params.startDate);
+        if (params?.endDate) query.append('endDate', params.endDate);
+        return api.get(`/tasks/me?${query.toString()}`);
+    }
+};
+
 export const notificationsApi = {
     list: (params?: { category?: string; isCleared?: boolean }) => {
         const query = new URLSearchParams();
