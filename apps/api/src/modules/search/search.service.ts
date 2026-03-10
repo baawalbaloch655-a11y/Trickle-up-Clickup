@@ -64,7 +64,7 @@ export class SearchService {
             type: 'TASK',
             title: t.title,
             subtitle: `in ${t.list.name}`,
-            metadata: { listId: t.listId, status: t.status, priority: t.priority },
+            metadata: { listId: t.listId, statusId: t.statusId, priority: t.priority },
             createdAt: t.createdAt,
         }));
     }

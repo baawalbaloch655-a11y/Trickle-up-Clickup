@@ -104,6 +104,13 @@ export class OrganizationsService {
         });
     }
 
+    async getStatuses(orgId: string) {
+        return this.prisma.status.findMany({
+            where: { orgId },
+            orderBy: { order: 'asc' },
+        });
+    }
+
     async inviteMember(orgId: string, dto: InviteMemberDto) {
         const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
         if (!user) throw new NotFoundException(`No user found with email: ${dto.email}`);

@@ -4,217 +4,261 @@ import * as argon2 from 'argon2';
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🌱 Seeding TrickleUp database with comprehensive test data...');
+    console.log('🌱 Seeding TrickleUp database with comprehensive test data for ALL models...');
 
-    // 1. Create Users
+    // 1. Create Users (with new credentials as requested)
+    const adminPassword = await argon2.hash('Admin123!');
     const defaultPassword = await argon2.hash('Password123!');
     const users = await Promise.all([
         prisma.user.upsert({
             where: { email: 'admin@trickleup.io' },
-            update: {},
-            create: { email: 'admin@trickleup.io', name: 'TrickleUp Admin', passwordHash: defaultPassword, isEmailVerified: true, status: 'ACTIVE' },
+            update: { passwordHash: adminPassword },
+            create: { email: 'admin@trickleup.io', name: 'TrickleUp Admin', passwordHash: adminPassword, isEmailVerified: true, status: 'ACTIVE' },
         }),
         prisma.user.upsert({
             where: { email: 'sarah@trickleup.io' },
-            update: {},
+            update: { passwordHash: defaultPassword },
             create: { email: 'sarah@trickleup.io', name: 'Sarah Chen (PM)', passwordHash: defaultPassword, isEmailVerified: true, status: 'ACTIVE' },
         }),
         prisma.user.upsert({
             where: { email: 'marcus@trickleup.io' },
-            update: {},
+            update: { passwordHash: defaultPassword },
             create: { email: 'marcus@trickleup.io', name: 'Marcus Doe (Eng)', passwordHash: defaultPassword, isEmailVerified: true, status: 'ACTIVE' },
         }),
         prisma.user.upsert({
             where: { email: 'emma@trickleup.io' },
-            update: {},
+            update: { passwordHash: defaultPassword },
             create: { email: 'emma@trickleup.io', name: 'Emma Watson (UI/UX)', passwordHash: defaultPassword, isEmailVerified: true, status: 'ACTIVE' },
+        }),
+        // NEW CREDENTIALS ADDED
+        prisma.user.upsert({
+            where: { email: 'hydra@trickleup.io' },
+            update: { passwordHash: adminPassword },
+            create: { email: 'hydra@trickleup.io', name: 'Hydra User', passwordHash: adminPassword, isEmailVerified: true, status: 'ACTIVE' },
         })
     ]);
-    const [admin, sarah, marcus, emma] = users;
+    const [admin, sarah, marcus, emma, hydra] = users;
     console.log('✅ Users created:', users.map(u => u.name).join(', '));
 
-    // 2. Create demo organization
+    // 2. Create Organization
     const org = await prisma.organization.upsert({
         where: { slug: 'trickleup-demo' },
         update: {},
         create: { name: 'TrickleUp Corp', slug: 'trickleup-demo', plan: 'ENTERPRISE' },
     });
-    console.log(`✅ Org: ${org.name}`);
+    console.log(`✅ Organization created: ${org.name}`);
 
-    // 3. Create system roles
-    const [ownerRole, adminRole, memberRole, viewerRole] = await Promise.all([
+    // 3. Departments, Teams, and Skills
+    const dept = await prisma.department.create({
+        data: { orgId: org.id, name: 'Engineering', description: 'Software Development Team' }
+    });
+    const team = await prisma.team.create({
+        data: { departmentId: dept.id, name: 'Frontend Squad', description: 'React and UI experts' }
+    });
+    const skill = await prisma.employeeSkill.create({
+        data: { orgId: org.id, name: 'React.js' }
+    });
+    console.log(`✅ HR structure created`);
+
+    // 4. Create Roles
+    const [ownerRole, adminRole, memberRole] = await Promise.all([
         prisma.role.upsert({
-            where: { orgId_name: { orgId: org.id, name: 'Owner' } },
-            update: {},
+            where: { orgId_name: { orgId: org.id, name: 'Owner' } }, update: {},
             create: { orgId: org.id, name: 'Owner', permissions: ['*'], isSystem: true },
         }),
         prisma.role.upsert({
-            where: { orgId_name: { orgId: org.id, name: 'Admin' } },
-            update: {},
-            create: {
-                orgId: org.id, name: 'Admin', isSystem: true,
-                permissions: ['org:read', 'org:write', 'members:read', 'members:write', 'projects:read', 'projects:write', 'tasks:read', 'tasks:write', 'files:read', 'files:write'],
-            },
+            where: { orgId_name: { orgId: org.id, name: 'Admin' } }, update: {},
+            create: { orgId: org.id, name: 'Admin', isSystem: true, permissions: ['org:read', 'org:write'] },
         }),
         prisma.role.upsert({
-            where: { orgId_name: { orgId: org.id, name: 'Member' } },
-            update: {},
-            create: {
-                orgId: org.id, name: 'Member', isDefault: true, isSystem: true,
-                permissions: ['org:read', 'members:read', 'projects:read', 'tasks:read', 'tasks:write', 'files:read'],
-            },
-        }),
-        prisma.role.upsert({
-            where: { orgId_name: { orgId: org.id, name: 'Viewer' } },
-            update: {},
-            create: {
-                orgId: org.id, name: 'Viewer', isSystem: true,
-                permissions: ['org:read', 'projects:read', 'tasks:read'],
-            },
+            where: { orgId_name: { orgId: org.id, name: 'Member' } }, update: {},
+            create: { orgId: org.id, name: 'Member', isDefault: true, isSystem: true, permissions: ['org:read'] },
         }),
     ]);
 
-    // 4. Add users to Org
+    // 5. Add members to Org and Teams
     const memberPromises = users.map(user =>
         prisma.orgMember.upsert({
-            where: { userId_orgId: { userId: user.id, orgId: org.id } },
-            update: {},
-            create: { userId: user.id, orgId: org.id, roleId: user.id === admin.id ? ownerRole.id : memberRole.id },
+            where: { userId_orgId: { userId: user.id, orgId: org.id } }, update: {},
+            create: {
+                userId: user.id, orgId: org.id,
+                roleId: (user.id === admin.id || user.id === hydra.id) ? ownerRole.id : memberRole.id,
+                departmentId: dept.id, teamId: team.id
+            },
         })
     );
-    await Promise.all(memberPromises);
-    console.log('✅ Users added to organization');
+    const orgMembers = await Promise.all(memberPromises);
+    console.log('✅ Users added to organization & teams');
 
-    // 5. Create Workspace Hierarchy (Spaces)
-    const spaceProduct = await prisma.space.upsert({
-        where: { id: 'seed-space-1' },
-        update: {},
-        create: { id: 'seed-space-1', orgId: org.id, name: 'Product Development', description: 'Core product management space', color: '#6366f1' },
+    // 6. Hierarchy: Spaces, Folders, Lists
+    const space = await prisma.space.upsert({
+        where: { id: 'seed-space-all' }, update: {},
+        create: { id: 'seed-space-all', orgId: org.id, name: 'Global Operations', color: '#6366f1' },
     });
-    const spaceMarketing = await prisma.space.upsert({
-        where: { id: 'seed-space-2' },
-        update: {},
-        create: { id: 'seed-space-2', orgId: org.id, name: 'Marketing & Design', description: 'GTM and Brand', color: '#ec4899' },
-    });
-    console.log(`✅ Spaces created`);
+    await prisma.spaceMember.create({ data: { spaceId: space.id, userId: hydra.id } });
 
-    // 6. Create Folders
-    const fRoadmap = await prisma.folder.upsert({
-        where: { id: 'seed-folder-1' },
-        update: {},
-        create: { id: 'seed-folder-1', spaceId: spaceProduct.id, orgId: org.id, name: 'Roadmap & Planning' },
+    const folder = await prisma.folder.upsert({
+        where: { id: 'seed-folder-all' }, update: {},
+        create: { id: 'seed-folder-all', spaceId: space.id, orgId: org.id, name: 'Engineering Initiatives' },
     });
-    const fEngineering = await prisma.folder.upsert({
-        where: { id: 'seed-folder-2' },
-        update: {},
-        create: { id: 'seed-folder-2', spaceId: spaceProduct.id, orgId: org.id, name: 'Engineering' },
+
+    const list = await prisma.list.upsert({
+        where: { id: 'seed-list-all' }, update: {},
+        create: { id: 'seed-list-all', orgId: org.id, spaceId: space.id, folderId: folder.id, name: 'Backend Rewrite', color: '#10b981' },
     });
-    const fCampaigns = await prisma.folder.upsert({
-        where: { id: 'seed-folder-3' },
-        update: {},
-        create: { id: 'seed-folder-3', spaceId: spaceMarketing.id, orgId: org.id, name: 'Campaigns' },
-    });
-    console.log(`✅ Folders created`);
+    console.log(`✅ Hierarchy created (Space > Folder > List)`);
 
-    // 7. Create Lists
-    const platformLaunch = await prisma.list.upsert({
-        where: { id: 'seed-list-1' },
-        update: {},
-        create: { id: 'seed-list-1', orgId: org.id, spaceId: spaceProduct.id, folderId: fRoadmap.id, name: 'Platform Launch', color: '#6366f1' },
-    });
-    const backendServices = await prisma.list.upsert({
-        where: { id: 'seed-list-2' },
-        update: {},
-        create: { id: 'seed-list-2', orgId: org.id, spaceId: spaceProduct.id, folderId: fEngineering.id, name: 'Backend Services', color: '#10b981' },
-    });
-    const websiteRevamp = await prisma.list.upsert({
-        where: { id: 'seed-list-3' },
-        update: {},
-        create: { id: 'seed-list-3', orgId: org.id, spaceId: spaceMarketing.id, folderId: fCampaigns.id, name: 'Website Revamp', color: '#f59e0b' },
-    });
-    console.log(`✅ Lists created`);
-
-    // 8. Helpers for dates and time
-    const today = new Date();
-    const daysAgo = (days: number) => new Date(today.getTime() - days * 24 * 60 * 60 * 1000);
-    const daysLater = (days: number) => new Date(today.getTime() + days * 24 * 60 * 60 * 1000);
-    const minutesToSeconds = (h: number, m: number) => (h * 60 + m) * 60;
-
-    // 9. Generate vast tasks
-    const allTasks = [
-        // Platform Launch Tasks
-        { listId: platformLaunch.id, title: 'Setup CI/CD pipeline', status: 'DONE', priority: 'HIGH', assigneeId: marcus.id, dueDate: daysAgo(5), timeTracked: minutesToSeconds(12, 30), comments: 2 },
-        { listId: platformLaunch.id, title: 'Design system implementation', status: 'IN_REVIEW', priority: 'MEDIUM', assigneeId: emma.id, dueDate: daysAgo(2), timeTracked: minutesToSeconds(8, 0), comments: 5 },
-        { listId: platformLaunch.id, title: 'API endpoint documentation', status: 'IN_PROGRESS', priority: 'LOW', assigneeId: admin.id, dueDate: today, timeTracked: minutesToSeconds(2, 0), comments: 0 },
-        { listId: platformLaunch.id, title: 'User onboarding flow', status: 'TODO', priority: 'URGENT', assigneeId: sarah.id, dueDate: daysLater(1), timeTracked: 0, comments: 1 },
-        { listId: platformLaunch.id, title: 'Email notification templates', status: 'TODO', priority: 'HIGH', assigneeId: marcus.id, dueDate: daysLater(3), timeTracked: 0, comments: 0 },
-        { listId: platformLaunch.id, title: 'Analytics dashboard', status: 'TODO', priority: 'MEDIUM', assigneeId: admin.id, dueDate: daysLater(7), timeTracked: 0, comments: 0 },
-        { listId: platformLaunch.id, title: 'Mobile responsive testing', status: 'IN_REVIEW', priority: 'HIGH', assigneeId: emma.id, dueDate: daysAgo(1), timeTracked: minutesToSeconds(5, 15), comments: 3 },
-        { listId: platformLaunch.id, title: 'Performance audit', status: 'TODO', priority: 'MEDIUM', assigneeId: null, dueDate: daysLater(30), timeTracked: 0, comments: 0 },
-        { listId: platformLaunch.id, title: 'Security review', status: 'DONE', priority: 'URGENT', assigneeId: marcus.id, dueDate: daysAgo(7), timeTracked: minutesToSeconds(15, 0), comments: 1 },
-        { listId: platformLaunch.id, title: 'Refactoring Auth module', status: 'IN_PROGRESS', priority: 'HIGH', assigneeId: marcus.id, dueDate: today, timeTracked: minutesToSeconds(4, 30), comments: 4 },
-
-        // Backend Services Tasks
-        { listId: backendServices.id, title: 'Microservices architecture design', status: 'DONE', priority: 'URGENT', assigneeId: marcus.id, dueDate: daysAgo(10), timeTracked: minutesToSeconds(20, 0), comments: 8 },
-        { listId: backendServices.id, title: 'Database optimization script', status: 'IN_PROGRESS', priority: 'HIGH', assigneeId: marcus.id, dueDate: daysLater(2), timeTracked: minutesToSeconds(3, 10), comments: 0 },
-        { listId: backendServices.id, title: 'Redis caching layer', status: 'TODO', priority: 'MEDIUM', assigneeId: admin.id, dueDate: daysLater(5), timeTracked: 0, comments: 2 },
-
-        // Website Revamp Tasks (Matching the image)
-        { listId: websiteRevamp.id, title: 'Creatives Resizing For Donation Focus', status: 'IN_REVIEW', priority: 'HIGH', assigneeId: emma.id, dueDate: daysAgo(2), timeTracked: 0, comments: 5 },
-        { listId: websiteRevamp.id, title: 'Additional Coupon Code Creative', status: 'IN_REVIEW', priority: 'URGENT', assigneeId: sarah.id, dueDate: daysAgo(1), timeTracked: minutesToSeconds(1, 3), comments: 5 },
-        { listId: websiteRevamp.id, title: 'Research and Ideation', status: 'DONE', priority: 'LOW', assigneeId: emma.id, dueDate: daysAgo(2), timeTracked: minutesToSeconds(2, 6), comments: 0 },
-        { listId: websiteRevamp.id, title: '2025 Impact Compilation Video', status: 'DONE', priority: 'MEDIUM', assigneeId: null, dueDate: daysAgo(4), timeTracked: minutesToSeconds(2, 8), comments: 2 },
-    ];
-
-    for (let i = 0; i < allTasks.length; i++) {
-        const t = allTasks[i];
-        const task = await prisma.task.upsert({
-            where: { id: `seed-task-auto-${i}` },
-            update: {
-                title: t.title,
-                status: t.status as any,
-                priority: t.priority as any,
-                assigneeId: t.assigneeId,
-                dueDate: t.dueDate,
-                timeTracked: t.timeTracked,
-            },
-            create: {
-                id: `seed-task-auto-${i}`,
-                listId: t.listId,
-                orgId: org.id,
-                title: t.title,
-                status: t.status as any,
-                priority: t.priority as any,
-                creatorId: admin.id,
-                assigneeId: t.assigneeId,
-                dueDate: t.dueDate,
-                order: i,
-                timeTracked: t.timeTracked,
-            },
+    // 7. Statuses and Tags
+    const statusMap: Record<string, string> = {};
+    for (const [key, name, color] of [['TODO', 'To Do', '#94a3b8'], ['IN_PROGRESS', 'In Progress', '#3b82f6'], ['DONE', 'Done', '#10b981']]) {
+        const status = await prisma.status.upsert({
+            where: { id: `status-${key}` }, update: {},
+            create: { id: `status-${key}`, orgId: org.id, name, category: key, color }
         });
-
-        // Add dummy comments
-        if (t.comments > 0) {
-            for (let j = 0; j < t.comments; j++) {
-                await prisma.taskComment.create({
-                    data: {
-                        taskId: task.id,
-                        userId: admin.id,
-                        content: `This is dummy comment ${j + 1}`
-                    }
-                });
-            }
-        }
+        statusMap[key] = status.id;
     }
-    console.log(`✅ ${allTasks.length} Sample tasks created with comments and time tracking`);
 
-    console.log('\n🎉 Comprehensive test data generation complete!');
+    const tag1 = await prisma.tag.upsert({
+        where: { orgId_name: { orgId: org.id, name: 'v2.0' } }, update: {}, create: { orgId: org.id, name: 'v2.0', color: '#ef4444' }
+    });
+    const tag2 = await prisma.tag.upsert({
+        where: { orgId_name: { orgId: org.id, name: 'API' } }, update: {}, create: { orgId: org.id, name: 'API', color: '#8b5cf6' }
+    });
+
+    // 8. Custom Fields
+    const cf = await prisma.customField.create({
+        data: { orgId: org.id, name: 'Story Points', type: 'NUMBER' }
+    });
+
+    // 9. Tasks & Related Data (Dependencies, Checklists, TimeEntries, TaskComments)
+    const task1 = await prisma.task.create({
+        data: {
+            listId: list.id, orgId: org.id, title: 'Refactor Core Logic', statusId: statusMap['IN_PROGRESS'],
+            priority: 'HIGH', creatorId: admin.id, assigneeId: hydra.id, order: 0,
+            tags: { connect: [{ id: tag1.id }, { id: tag2.id }] }
+        }
+    });
+
+    const task2 = await prisma.task.create({
+        data: {
+            listId: list.id, orgId: org.id, title: 'Write Unit Tests for Core', statusId: statusMap['TODO'],
+            priority: 'MEDIUM', creatorId: hydra.id, assigneeId: marcus.id, order: 1
+        }
+    });
+
+    // Task Dependency
+    await prisma.taskDependency.create({
+        data: { blockingId: task1.id, waitingOnId: task2.id }
+    });
+
+    // Custom Field Value
+    await prisma.customFieldValue.create({
+        data: { taskId: task1.id, customFieldId: cf.id, value: 5 }
+    });
+
+    // Checklist
+    const checklist = await prisma.checklist.create({ data: { taskId: task1.id, name: 'Refactoring Steps' } });
+    await prisma.checklistItem.create({ data: { checklistId: checklist.id, name: 'Update interfaces', isResolved: true } });
+    await prisma.checklistItem.create({ data: { checklistId: checklist.id, name: 'Implement new classes', isResolved: false } });
+
+    // Time Entry
+    await prisma.timeEntry.create({
+        data: { taskId: task1.id, userId: hydra.id, duration: 3600, description: 'Worked on interfaces' }
+    });
+
+    // Task Comment
+    await prisma.taskComment.create({
+        data: { taskId: task1.id, userId: hydra.id, content: 'Making good progress on this!' }
+    });
+    console.log(`✅ Tasks and all attributes (Dependencies, Checklists, Comments, TimeEntries, Custom Fields) created`);
+
+    // 10. Forms
+    const form = await prisma.form.create({
+        data: { orgId: org.id, listId: list.id, name: 'Bug Report Form' }
+    });
+    await prisma.formField.create({
+        data: { formId: form.id, type: 'TEXT', label: 'Bug Title', required: true, mapping: 'title' }
+    });
+    await prisma.formSubmission.create({
+        data: { formId: form.id, taskId: task2.id, data: { 'Bug Title': 'System crashing on load' } }
+    });
+
+    // 11. Goals and Targets
+    const goal = await prisma.goal.create({
+        data: { orgId: org.id, name: 'Q3 Product Delivery', ownerId: hydra.id }
+    });
+    await prisma.goalTarget.create({
+        data: { goalId: goal.id, name: 'Deploy rewritten backend', type: 'TRUE_FALSE', targetValue: 1, currentValue: 0 }
+    });
+
+    // 12. Channels, Conversations, Messages
+    const channel = await prisma.channel.create({
+        data: { orgId: org.id, name: 'general', description: 'General organization chat' }
+    });
+    await prisma.channelMember.create({ data: { channelId: channel.id, userId: hydra.id, role: 'ADMIN' } });
+    await prisma.message.create({ data: { channelId: channel.id, userId: admin.id, content: 'Welcome to TrickleUp!' } });
+
+    const dm = await prisma.conversation.create({ data: { orgId: org.id, isGroup: false } });
+    await prisma.conversationMember.create({ data: { conversationId: dm.id, userId: hydra.id } });
+    await prisma.conversationMember.create({ data: { conversationId: dm.id, userId: admin.id } });
+    await prisma.message.create({ data: { conversationId: dm.id, userId: hydra.id, content: 'Hello Admin!' } });
+
+    // 13. Documents
+    await prisma.document.create({
+        data: { orgId: org.id, spaceId: space.id, title: 'Engineering Handbook', content: '# Welcome\nHere are the docs!', creatorId: hydra.id }
+    });
+
+    // 14. Automations
+    const rule = await prisma.automationRule.create({
+        data: { orgId: org.id, listId: list.id, name: 'Auto-assign to Marcus', trigger: { type: 'STATUS_CHANGE', to: 'IN_REVIEW' } }
+    });
+    await prisma.automationAction.create({
+        data: { ruleId: rule.id, type: 'ASSIGN_USER', payload: { userId: marcus.id } }
+    });
+
+    // 15. Dashboards & Widgets
+    const dash = await prisma.dashboard.create({ data: { orgId: org.id, name: 'Team Overview' } });
+    await prisma.dashboardWidget.create({
+        data: { dashboardId: dash.id, type: 'BAR_CHART', name: 'Task Statuses', settings: { groupBy: 'status' } }
+    });
+
+    // 16. Integrations & Webhooks
+    await prisma.integration.create({
+        data: { orgId: org.id, provider: 'github', credentials: { token: 'mock-gh-token' } }
+    });
+    await prisma.webhook.create({
+        data: { orgId: org.id, url: 'https://webhook.site/test', events: ['task.created'] }
+    });
+
+    // 17. AI Operations
+    await prisma.aiOperation.create({
+        data: { orgId: org.id, userId: hydra.id, action: 'summarize', prompt: 'Summarize tasks', response: 'You have 2 tasks.', status: 'COMPLETED', tokens: 150 }
+    });
+
+    // 18. Favorites
+    await prisma.favorite.create({
+        data: { orgId: org.id, userId: hydra.id, entityType: 'LIST', entityId: list.id }
+    });
+
+    // 19. Notifications and Audit Logs
+    await prisma.notification.create({
+        data: { orgId: org.id, userId: hydra.id, type: 'SYSTEM', title: 'Welcome', body: 'Welcome to your new account!' }
+    });
+    await prisma.auditLog.create({
+        data: { orgId: org.id, userId: hydra.id, action: 'LOGIN', resource: 'Auth' }
+    });
+
+    console.log('✅ Secondary & advanced features populated (Docs, Automations, Integrations, Goals, Forms, Dashboards, Channels...)');
+
+    console.log('\n🎉 Comprehensive EXHAUSTIVE test data generation complete!');
     console.log('You can now log in with:');
+    console.log('Hydra: hydra@trickleup.io');
     console.log('Admin: admin@trickleup.io');
     console.log('PM: sarah@trickleup.io');
     console.log('Eng: marcus@trickleup.io');
     console.log('Design: emma@trickleup.io');
-    console.log('Password for all: Password123!');
+    console.log('Password for hydra & admin: Admin123!');
+    console.log('Password for others: Password123!');
 }
 
 main()

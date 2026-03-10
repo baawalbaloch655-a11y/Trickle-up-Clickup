@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useParams, NavLink, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { spacesApi, tasksApi, listsApi } from '../../lib/api';
+import { spacesApi, tasksApi, listsApi, usersApi, orgsApi } from '../../lib/api';
+import CreateTaskModal from '../../components/tasks/CreateTaskModal';
+import TaskRow from '../../components/tasks/TaskRow';
 import { useAuthStore } from '../../store/authStore';
 import {
     Box, ChevronDown, ChevronRight, Plus, Star, MoreHorizontal,
@@ -48,6 +50,30 @@ export default function SpacePage() {
     const [addingToStatus, setAddingToStatus] = useState<string | null>(null);
     const [addingToList, setAddingToList] = useState<string | null>(null);
     const [selectedTask, setSelectedTask] = useState<any | null>(null);
+    const [createTaskOpen, setCreateTaskOpen] = useState(false);
+    // Board-specific state
+    const [boardAddingToStatus, setBoardAddingToStatus] = useState<string | null>(null);
+    const [boardNewTaskTitle, setBoardNewTaskTitle] = useState('');
+    const [boardDraggingId, setBoardDraggingId] = useState<string | null>(null);
+    const [boardOverStatus, setBoardOverStatus] = useState<string | null>(null);
+
+    // Fetch org members for assignee picker
+    const { data: membersRes } = useQuery({
+        queryKey: ['users-search', ''],
+        queryFn: () => usersApi.search(''),
+        staleTime: 60_000,
+    });
+    const orgMembers: any[] = (membersRes?.data?.data || membersRes?.data || []).map((m: any) => m.user ?? m).filter(Boolean);
+
+    // Fetch org statuses for inline status picker
+    const activeOrgId = useAuthStore.getState().activeOrg?.id;
+    const { data: statusesRes } = useQuery({
+        queryKey: ['org-statuses', activeOrgId],
+        queryFn: () => orgsApi.statuses(activeOrgId!),
+        enabled: !!activeOrgId,
+        staleTime: 120_000,
+    });
+    const orgStatuses: any[] = statusesRes?.data?.data || statusesRes?.data || [];
 
     // Fetch space with folders & lists
     const { data: spaceRes, isLoading: spaceLoading } = useQuery({
@@ -103,19 +129,38 @@ export default function SpacePage() {
 
     const allTasks = allTasksData || [];
 
-    // Group tasks by status
+    // Group tasks by status category
     const tasksByStatus: Record<string, any[]> = {};
     Object.keys(STATUS_CONFIG).forEach(s => { tasksByStatus[s] = []; });
     allTasks.forEach((task: any) => {
-        const status = task.status || 'TODO';
-        if (!tasksByStatus[status]) tasksByStatus[status] = [];
-        tasksByStatus[status].push(task);
+        const cat = task.status?.category || 'TODO';
+        if (!tasksByStatus[cat]) tasksByStatus[cat] = [];
+        tasksByStatus[cat].push(task);
     });
+
+    // Inline update mutation
+    const inlineUpdateMutation = useMutation({
+        mutationFn: ({ listId, taskId, data }: { listId: string; taskId: string; data: any }) =>
+            tasksApi.update(listId, taskId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['space-tasks'] });
+        },
+        onError: (err: any) => {
+            toast.error(err?.response?.data?.message || 'Update failed');
+        },
+    });
+
+    const handleInlineUpdate = (taskId: string, data: any) => {
+        // Find which list this task belongs to
+        const task = allTasks.find((t: any) => t.id === taskId);
+        if (!task) return;
+        inlineUpdateMutation.mutate({ listId: task.listId, taskId, data });
+    };
 
     // Create task mutation
     const createTaskMutation = useMutation({
-        mutationFn: (data: { listId: string; title: string; status: string }) =>
-            tasksApi.create(data.listId, { title: data.title, status: data.status }),
+        mutationFn: (data: { listId: string; title: string; statusId?: string; status?: string }) =>
+            tasksApi.create(data.listId, { title: data.title, statusId: data.statusId, status: data.status }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['space-tasks'] });
             setNewTaskTitle('');
@@ -351,7 +396,10 @@ export default function SpacePage() {
                         <button className="p-1 rounded text-gray-600 hover:text-gray-300 transition-colors">
                             <Search size={13} />
                         </button>
-                        <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-accent-600 text-white hover:bg-accent-500 transition-colors shadow-glow-sm">
+                        <button
+                            onClick={() => setCreateTaskOpen(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-accent-600 text-white hover:bg-accent-500 transition-colors shadow-glow-sm"
+                        >
                             <Plus size={12} />
                             Task
                         </button>
@@ -411,6 +459,9 @@ export default function SpacePage() {
                                                                     listName={task.listName}
                                                                     spaceName={space.name}
                                                                     user={user}
+                                                                    members={orgMembers}
+                                                                    statuses={orgStatuses}
+                                                                    onUpdate={handleInlineUpdate}
                                                                     onClick={() => setSelectedTask(task)}
                                                                 />
                                                             ))}
@@ -466,19 +517,48 @@ export default function SpacePage() {
 
                             {/* ─── BOARD VIEW ─────────────────────────────────────────────────────── */}
                             {activeTab === 'board' && (
-                                <div className="flex gap-4 p-6 h-full items-start">
+                                <div className="flex gap-4 p-6 h-full items-start overflow-x-auto">
                                     {Object.entries(tasksByStatus).map(([status, tasks]) => {
                                         const config = STATUS_CONFIG[status] || STATUS_CONFIG.TODO;
+                                        const isOver = boardOverStatus === status;
+                                        const isAddingHere = boardAddingToStatus === status;
+                                        // Find a list to create a task in (first available from this space)
+
                                         return (
-                                            <div key={status} className="w-72 flex-shrink-0 flex flex-col bg-gray-900/20 rounded-xl border border-gray-800/50 max-h-[calc(100vh-160px)]">
+                                            <div
+                                                key={status}
+                                                className={clsx(
+                                                    'w-72 flex-shrink-0 flex flex-col rounded-xl border max-h-[calc(100vh-160px)] transition-all duration-150',
+                                                    isOver
+                                                        ? 'bg-gray-800/60 border-gray-600 shadow-lg ring-1 ring-inset ring-gray-700'
+                                                        : 'bg-gray-900/20 border-gray-800/50'
+                                                )}
+                                                onDragOver={(e) => { e.preventDefault(); setBoardOverStatus(status); }}
+                                                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setBoardOverStatus(null); }}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    const taskId = e.dataTransfer.getData('taskId');
+                                                    if (taskId) {
+                                                        const statusId = orgStatuses.find((s: any) => s.category === status)?.id;
+                                                        if (statusId) handleInlineUpdate(taskId, { statusId });
+                                                    }
+                                                    setBoardOverStatus(null);
+                                                    setBoardDraggingId(null);
+                                                }}
+                                            >
+                                                {/* Column header */}
                                                 <div className="p-3 border-b border-gray-800/50 flex items-center justify-between sticky top-0 bg-[#0d0d0d]/90 backdrop-blur rounded-t-xl z-10">
                                                     <div className="flex items-center gap-2">
                                                         <div className={clsx("w-2 h-2 rounded-full", config.bgColor)} />
                                                         <span className="text-[11px] font-bold text-gray-300 tracking-wider uppercase">{config.label}</span>
-                                                        <span className="text-[10px] text-gray-500 bg-gray-800 px-1.5 rounded">{tasks.length}</span>
+                                                        <span className="text-[10px] text-gray-500 bg-gray-800 px-1.5 rounded">{(tasks as any[]).length}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">
-                                                        <button className="p-1 rounded text-gray-600 hover:text-gray-300 transition-colors">
+                                                        <button
+                                                            onClick={() => { setBoardAddingToStatus(status); setBoardNewTaskTitle(''); }}
+                                                            className="p-1 rounded text-gray-600 hover:text-gray-200 hover:bg-gray-700 transition-colors"
+                                                            title="Add task"
+                                                        >
                                                             <Plus size={14} />
                                                         </button>
                                                         <button className="p-1 rounded text-gray-600 hover:text-gray-300 transition-colors">
@@ -486,25 +566,108 @@ export default function SpacePage() {
                                                         </button>
                                                     </div>
                                                 </div>
+
+                                                {/* Scrollable task list */}
                                                 <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-                                                    {tasks.map((task: any) => (
-                                                        <BoardTaskCard
-                                                            key={task.id}
-                                                            task={task}
-                                                            listName={task.listName}
-                                                            onClick={() => setSelectedTask(task)}
-                                                        />
-                                                    ))}
-                                                    <button
-                                                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-gray-800/50 transition-colors group border border-dashed border-transparent hover:border-gray-700"
-                                                        onClick={() => {
-                                                            setAddingToStatus(status);
-                                                            setActiveTab('list'); // Redirect to list to add task easily
-                                                        }}
-                                                    >
-                                                        <Plus size={14} className="group-hover:text-accent-400" />
-                                                        Add Task
-                                                    </button>
+                                                    {/* Inline quick-add form */}
+                                                    {isAddingHere && (
+                                                        <div className="rounded-xl border border-accent-500/50 bg-gray-800/80 p-3 space-y-2 shadow-xl">
+                                                            <input
+                                                                autoFocus
+                                                                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 placeholder-gray-600 outline-none focus:border-accent-500 transition-colors"
+                                                                placeholder="Task title..."
+                                                                value={boardNewTaskTitle}
+                                                                onChange={(e) => setBoardNewTaskTitle(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && boardNewTaskTitle.trim() && allListIds[0]) {
+                                                                        const sId = orgStatuses.find((s: any) => s.category === status)?.id;
+                                                                        createTaskMutation.mutate({ listId: allListIds[0], title: boardNewTaskTitle.trim(), statusId: sId });
+                                                                        setBoardAddingToStatus(null);
+                                                                        setBoardNewTaskTitle('');
+                                                                    } else if (e.key === 'Escape') {
+                                                                        setBoardAddingToStatus(null);
+                                                                        setBoardNewTaskTitle('');
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={() => { setBoardAddingToStatus(null); setBoardNewTaskTitle(''); }}
+                                                                    className="flex-1 py-1.5 text-xs text-gray-400 hover:text-gray-200 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        if (boardNewTaskTitle.trim() && allListIds[0]) {
+                                                                            const sId = orgStatuses.find((s: any) => s.category === status)?.id;
+                                                                            createTaskMutation.mutate({ listId: allListIds[0], title: boardNewTaskTitle.trim(), statusId: sId });
+                                                                            setBoardAddingToStatus(null);
+                                                                            setBoardNewTaskTitle('');
+                                                                        }
+                                                                    }}
+                                                                    disabled={!boardNewTaskTitle.trim() || createTaskMutation.isPending}
+                                                                    className="flex-1 py-1.5 text-xs bg-accent-600 hover:bg-accent-500 disabled:opacity-40 text-white rounded-lg transition-colors font-semibold flex items-center justify-center gap-1"
+                                                                >
+                                                                    <Plus size={11} /> Add
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Task cards */}
+                                                    {(tasks as any[]).map((task: any) => {
+                                                        const isDragging = boardDraggingId === task.id;
+                                                        return (
+                                                            <div
+                                                                key={task.id}
+                                                                draggable
+                                                                onDragStart={(e) => {
+                                                                    e.dataTransfer.setData('taskId', task.id);
+                                                                    e.dataTransfer.effectAllowed = 'move';
+                                                                    setBoardDraggingId(task.id);
+                                                                }}
+                                                                onDragEnd={() => { setBoardDraggingId(null); setBoardOverStatus(null); }}
+                                                                className={clsx(
+                                                                    'transition-all select-none',
+                                                                    isDragging && 'opacity-40 scale-95'
+                                                                )}
+                                                            >
+                                                                <BoardTaskCard
+                                                                    task={task}
+                                                                    listName={task.listName}
+                                                                    onClick={() => setSelectedTask(task)}
+                                                                />
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                    {/* Empty column drop zone */}
+                                                    {(tasks as any[]).length === 0 && !isAddingHere && (
+                                                        <div
+                                                            onClick={() => { setBoardAddingToStatus(status); setBoardNewTaskTitle(''); }}
+                                                            className={clsx(
+                                                                'h-20 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all',
+                                                                isOver
+                                                                    ? 'border-accent-500/60 bg-accent-900/10 text-accent-400'
+                                                                    : 'border-gray-800 hover:border-gray-700 text-gray-700 hover:text-gray-600'
+                                                            )}
+                                                        >
+                                                            <Plus size={14} className="opacity-60" />
+                                                            <p className="text-[11px] font-medium">{isOver ? 'Drop here' : 'Click to add'}</p>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Bottom add task button (when column has tasks) */}
+                                                    {(tasks as any[]).length > 0 && !isAddingHere && (
+                                                        <button
+                                                            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-gray-600 hover:text-gray-300 hover:bg-gray-800/50 transition-colors group border border-dashed border-transparent hover:border-gray-700"
+                                                            onClick={() => { setBoardAddingToStatus(status); setBoardNewTaskTitle(''); }}
+                                                        >
+                                                            <Plus size={13} className="group-hover:text-accent-400" />
+                                                            Add Task
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -682,104 +845,23 @@ export default function SpacePage() {
                     spaceName={space.name}
                 />
             )}
+
+            {/* Create Task Modal */}
+            <CreateTaskModal
+                open={createTaskOpen}
+                lists={[
+                    ...(space.lists || []).filter((l: any) => !l.folderId).map((l: any) => ({ id: l.id, name: l.name })),
+                    ...(space.folders || []).flatMap((f: any) =>
+                        (f.lists || []).map((l: any) => ({ id: l.id, name: l.name, folderName: f.name }))
+                    ),
+                ]}
+                defaultListId={allListIds[0]}
+                onClose={() => setCreateTaskOpen(false)}
+            />
         </div>
     );
 }
 
-// ─── Task Row Component ───────────────────────────────────────────
-function TaskRow({ task, listName, spaceName, user, onClick }: { task: any; listName?: string; spaceName?: string; user: any; onClick?: () => void }) {
-    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-    const isOverdue = dueDate && isPast(dueDate) && task.status !== 'DONE';
-    const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.MEDIUM;
-
-    return (
-        <div
-            onClick={onClick}
-            className="group grid grid-cols-12 gap-2 px-6 py-2.5 border-b border-gray-900/20 hover:bg-gray-800/15 transition-all cursor-pointer items-center"
-        >
-            {/* Name Column */}
-            <div className="col-span-4 flex items-center gap-2 min-w-0">
-                <ChevronRight size={12} className="text-gray-700 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="min-w-0">
-                    {/* Breadcrumb */}
-                    {(spaceName || listName) && (
-                        <div className="flex items-center gap-1 text-[9px] text-gray-600 mb-0.5">
-                            {spaceName && <span className="hover:text-gray-400 cursor-pointer">{spaceName}</span>}
-                            {spaceName && listName && <span>/</span>}
-                            {listName && <span className="hover:text-gray-400 cursor-pointer">{listName}</span>}
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                        <div className={clsx(
-                            "w-3.5 h-3.5 rounded-full border-2 flex-shrink-0",
-                            task.status === 'DONE' ? "border-green-500 bg-green-500" : "border-gray-600"
-                        )}>
-                            {task.status === 'DONE' && <CheckCircle2 size={10} className="text-white" />}
-                        </div>
-                        <span className="text-sm text-gray-200 font-medium truncate group-hover:text-white transition-colors">
-                            {task.title}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Assignee */}
-            <div className="col-span-1 flex items-center">
-                {task.assignee ? (
-                    <div className="w-6 h-6 rounded-full bg-accent-600/20 flex items-center justify-center text-[9px] font-bold text-accent-400 border border-accent-500/20">
-                        {task.assignee.name?.[0]?.toUpperCase()}
-                    </div>
-                ) : (
-                    <div className="w-6 h-6 rounded-full border border-dashed border-gray-700 flex items-center justify-center opacity-40 group-hover:opacity-100 transition-opacity">
-                        <Users size={10} className="text-gray-600" />
-                    </div>
-                )}
-            </div>
-
-            {/* Due date */}
-            <div className="col-span-2">
-                {dueDate ? (
-                    <span className={clsx(
-                        "text-[11px] font-medium",
-                        isOverdue ? "text-red-400" : "text-gray-500"
-                    )}>
-                        {formatDistanceToNow(dueDate, { addSuffix: false })}
-                        {isOverdue && ' ago'}
-                        {!isOverdue && `, ${format(dueDate, 'h:mma').toLowerCase()}`}
-                    </span>
-                ) : (
-                    <span className="text-[11px] text-gray-700">—</span>
-                )}
-            </div>
-
-            {/* Priority */}
-            <div className="col-span-1 flex items-center">
-                <div className={clsx("flex items-center gap-1", priorityConfig.color)}>
-                    <Flag size={12} />
-                </div>
-            </div>
-
-            {/* Time tracked */}
-            <div className="col-span-2 flex items-center gap-1">
-                <Clock size={11} className="text-gray-600" />
-                <span className="text-[11px] text-gray-500 font-medium">
-                    {task.timeTracked
-                        ? `${Math.floor(task.timeTracked / 3600)}h ${Math.floor((task.timeTracked % 3600) / 60)}m`
-                        : 'Add time'
-                    }
-                </span>
-            </div>
-
-            {/* Comments */}
-            <div className="col-span-2 flex items-center gap-1">
-                <MessageSquare size={11} className="text-gray-600" />
-                <span className="text-[11px] text-gray-500">
-                    {task._count?.TaskComment || task.commentsCount || 0}
-                </span>
-            </div>
-        </div>
-    );
-}
 
 // ─── Board Task Card Component ─────────────────────────────────────
 function BoardTaskCard({ task, listName, onClick }: { task: any; listName?: string; onClick?: () => void }) {

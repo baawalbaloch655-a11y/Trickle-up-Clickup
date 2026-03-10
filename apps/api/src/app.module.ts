@@ -26,6 +26,13 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
 import { ChannelsModule } from './modules/channels/channels.module';
 import { ConversationsModule } from './modules/conversations/conversations.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { DashboardsModule } from './modules/dashboards/dashboards.module';
+import { DocsModule } from './modules/docs/docs.module';
+import { GoalsModule } from './modules/goals/goals.module';
+import { IntegrationsModule } from './modules/integrations/integrations.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { AiModule } from './modules/ai/ai.module';
+import { FormsModule } from './modules/forms/forms.module';
 
 @Module({
     imports: [
@@ -73,11 +80,21 @@ import { MessagesModule } from './modules/messages/messages.module';
         AutomationsModule,
 
         // Collaboration
+        AiModule,
+        FormsModule,
         TaskCommentsModule,
         FavoritesModule,
         ChannelsModule,
         ConversationsModule,
         MessagesModule,
+        DashboardsModule,
+        DocsModule,
+        GoalsModule,
+
+        // Epic 4
+        WebhooksModule,
+        IntegrationsModule,
+        AiModule,
     ],
 })
 export class AppModule { }

@@ -17,6 +17,12 @@ export class ListsController {
         return this.listsService.create(orgId, createListDto);
     }
 
+    @Get()
+    @ApiOperation({ summary: 'Get all lists in organization' })
+    findAll(@Headers('x-org-id') orgId: string) {
+        return this.listsService.findAll(orgId);
+    }
+
     @Get('folder/:folderId')
     @ApiOperation({ summary: 'Get all lists in a folder' })
     findAllByFolder(@Param('folderId') folderId: string) {

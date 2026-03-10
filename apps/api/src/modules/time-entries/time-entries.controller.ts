@@ -12,6 +12,12 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 export class TimeEntriesController {
     constructor(private readonly timeEntriesService: TimeEntriesService) { }
 
+    @Get('active')
+    @ApiOperation({ summary: 'Get current active timer' })
+    findActive(@CurrentUser('id') userId: string) {
+        return this.timeEntriesService.findActive(userId);
+    }
+
     @Post('start')
     @ApiOperation({ summary: 'Start a timer or log manual time' })
     startTimer(@CurrentUser('id') userId: string, @Body() dto: CreateTimeEntryDto) {

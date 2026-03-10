@@ -47,6 +47,15 @@ export class AnalyticsController {
         return this.service.getTasksByPriority(orgId);
     }
 
+    @Get('tasks/by-priority/:priority')
+    @ApiOperation({ summary: 'Get tasks for a specific priority' })
+    getTasksForPriority(
+        @Headers('x-org-id') orgId: string,
+        @Param('priority') priority: string,
+    ) {
+        return this.service.getTasksForPriority(orgId, priority);
+    }
+
     @Get('tasks/by-list')
     @ApiOperation({ summary: 'Task breakdown by list with task details' })
     getTasksByList(@Headers('x-org-id') orgId: string) {
@@ -63,6 +72,28 @@ export class AnalyticsController {
     @ApiOperation({ summary: 'Org activity feed' })
     getActivityFeed(@Headers('x-org-id') orgId: string) {
         return this.service.getActivityFeed(orgId);
+    }
+
+    @Get('timesheets')
+    @ApiOperation({ summary: 'Get time tracking summary' })
+    getTimesheets(
+        @Headers('x-org-id') orgId: string,
+        @Query('userId') userId?: string,
+        @Query('startDate') startDate?: string,
+        @Query('endDate') endDate?: string,
+    ) {
+        return this.service.getTimeTrackingSummary(
+            orgId,
+            userId,
+            startDate ? new Date(startDate) : undefined,
+            endDate ? new Date(endDate) : undefined,
+        );
+    }
+
+    @Get('productivity')
+    @ApiOperation({ summary: 'Get productivity metrics (Estimate vs Actual)' })
+    getProductivity(@Headers('x-org-id') orgId: string) {
+        return this.service.getProductivityMetrics(orgId);
     }
 
     @Public()

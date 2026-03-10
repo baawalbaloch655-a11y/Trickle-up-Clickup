@@ -16,6 +16,13 @@ export class ListsService {
         });
     }
 
+    async findAll(orgId: string) {
+        return this.prisma.list.findMany({
+            where: { orgId },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
     async findAllByFolder(folderId: string) {
         return this.prisma.list.findMany({
             where: { folderId },

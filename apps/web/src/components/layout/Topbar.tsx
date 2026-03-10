@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSocketStore, getSocket } from '../../lib/socket';
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
+import GlobalTimer from './GlobalTimer';
 
 export default function Topbar() {
     const { toggleSidebar, toggleNotificationPanel } = useUIStore();
@@ -62,7 +63,7 @@ export default function Topbar() {
             </div>
 
             {/* Search */}
-            <div className="flex-1 max-w-sm">
+            <div className="flex-1 max-w-sm ml-4">
                 <div className="relative">
                     <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                     <input
@@ -75,8 +76,16 @@ export default function Topbar() {
 
             <div className="flex-1" />
 
+            {/* Global Timer */}
+            <GlobalTimer />
+
+            <div className="flex-1" />
+
             {/* Create button */}
-            <button className="btn-primary btn-sm gap-1.5">
+            <button
+                onClick={() => toast('Global Task Creation coming in Epic 5!', { icon: '🚧', style: { background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151' } })}
+                className="btn-primary btn-sm gap-1.5"
+            >
                 <Plus size={15} />
                 <span className="hidden sm:inline">New Task</span>
             </button>

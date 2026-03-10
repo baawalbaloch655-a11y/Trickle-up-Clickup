@@ -47,6 +47,12 @@ export class OrganizationsController {
         return this.service.getMembers(orgId);
     }
 
+    @Get(':orgId/statuses')
+    @ApiOperation({ summary: 'List organization statuses' })
+    getStatuses(@Param('orgId') orgId: string) {
+        return this.service.getStatuses(orgId);
+    }
+
     @Post(':orgId/members')
     @RequirePermissions('members:write')
     @ApiOperation({ summary: 'Invite a user to the organization' })

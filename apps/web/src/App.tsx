@@ -9,10 +9,13 @@ import AppShell from './components/layout/AppShell';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
+import DashboardsListPage from './pages/dashboard/DashboardsListPage';
+import DashboardDetailPage from './pages/dashboard/DashboardDetailPage';
 import ProjectDetailPage from './pages/projects/ProjectDetailPage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import ProfileSettingsPage from './pages/settings/ProfileSettingsPage';
 import OrgSettingsPage from './pages/settings/OrgSettingsPage';
+import IntegrationsPage from './pages/settings/IntegrationsPage';
 import OrgSelectPage from './pages/auth/OrgSelectPage';
 import CallOverlay from './components/chat/CallOverlay';
 import PeoplePage from './pages/people/PeoplePage';
@@ -20,9 +23,17 @@ import ChatPage from './pages/chat/ChatPage';
 import InboxPage from './pages/inbox/InboxPage';
 import HomeDashboard from './pages/dashboard/HomeDashboard';
 import ChatLandingPage from './pages/chat/ChatLandingPage';
+import FormsListPage from './pages/forms/FormsListPage';
+import FormBuilder from './pages/forms/FormBuilder';
+import PublicFormPage from './pages/forms/PublicFormPage';
+import TimesheetsPage from './pages/analytics/TimesheetsPage';
 import TeamsPage from './pages/teams/TeamsPage';
 import ClipsPage from './pages/clips/ClipsPage';
 import SpacePage from './pages/spaces/SpacePage';
+import GoalsPage from './pages/goals/GoalsPage';
+import DocsListPage from './pages/docs/DocsListPage';
+import DocEditorPage from './pages/docs/DocEditorPage';
+import ComingSoonPage from './pages/ComingSoonPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -174,11 +185,14 @@ export default function App() {
                     <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
                     <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
                     <Route path="/select-org" element={<PrivateRoute><OrgSelectPage /></PrivateRoute>} />
+                    <Route path="/f/:id" element={<PublicFormPage />} />
 
                     {/* Protected app routes */}
                     <Route path="/" element={<PrivateRoute><AppShell /></PrivateRoute>}>
                         <Route index element={<Navigate to="/home" replace />} />
                         <Route path="home" element={<HomeDashboard />} />
+                        <Route path="dashboards" element={<DashboardsListPage />} />
+                        <Route path="dashboards/:id" element={<DashboardDetailPage />} />
                         <Route path="dashboard" element={<DashboardPage />} />
                         <Route path="people" element={<PeoplePage />} />
                         <Route path="projects/:id" element={<ProjectDetailPage />} />
@@ -187,12 +201,22 @@ export default function App() {
                         <Route path="inbox/:filter" element={<InboxPage />} />
                         <Route path="settings/profile" element={<ProfileSettingsPage />} />
                         <Route path="settings/organization" element={<OrgSettingsPage />} />
+                        <Route path="settings/integrations" element={<IntegrationsPage />} />
                         <Route path="chat" element={<ChatLandingPage />} />
                         <Route path="teams" element={<TeamsPage />} />
                         <Route path="clips" element={<ClipsPage />} />
                         <Route path="channels/:channelId" element={<ChatPage />} />
                         <Route path="conversations/:conversationId" element={<ChatPage />} />
                         <Route path="spaces/:spaceId" element={<SpacePage />} />
+                        <Route path="goals" element={<GoalsPage />} />
+                        <Route path="docs" element={<DocsListPage />} />
+                        <Route path="docs/:id" element={<DocEditorPage />} />
+                        <Route path="planner" element={<ComingSoonPage />} />
+                        <Route path="ai" element={<Navigate to="/settings/integrations?tab=ai" replace />} />
+                        <Route path="whiteboards" element={<ComingSoonPage />} />
+                        <Route path="forms" element={<FormsListPage />} />
+                        <Route path="forms/:id/edit" element={<FormBuilder />} />
+                        <Route path="timesheets" element={<TimesheetsPage />} />
                     </Route>
 
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />

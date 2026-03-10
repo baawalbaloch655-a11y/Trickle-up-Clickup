@@ -87,6 +87,7 @@ export const orgsApi = {
     get: (id: string) => api.get(`/organizations/${id}`),
     update: (id: string, data: object) => api.patch(`/organizations/${id}`, data),
     members: (id: string) => api.get(`/organizations/${id}/members`),
+    statuses: (id: string) => api.get(`/organizations/${id}/statuses`),
     invite: (id: string, data: { email: string; roleId: string }) =>
         api.post(`/organizations/${id}/members`, data),
     removeMember: (orgId: string, memberId: string) =>
@@ -112,6 +113,7 @@ export const foldersApi = {
 };
 
 export const listsApi = {
+    listAll: () => api.get('/lists'),
     listInSpace: (spaceId: string) => api.get(`/spaces/${spaceId}/lists`),
     listInFolder: (folderId: string) => api.get(`/folders/${folderId}/lists`),
     create: (data: { name: string; spaceId: string; folderId?: string; color?: string }) =>
@@ -123,13 +125,32 @@ export const listsApi = {
 
 export const tasksApi = {
     list: (listId: string) => api.get(`/lists/${listId}/tasks`),
+    get: (listId: string, taskId: string) => api.get(`/lists/${listId}/tasks/${taskId}`),
     create: (listId: string, data: object) => api.post(`/lists/${listId}/tasks`, data),
     update: (listId: string, taskId: string, data: object) =>
         api.patch(`/lists/${listId}/tasks/${taskId}`, data),
-    move: (listId: string, taskId: string, data: { status: string; order?: number }) =>
+    move: (listId: string, taskId: string, data: { statusId?: string; order?: number }) =>
         api.patch(`/lists/${listId}/tasks/${taskId}/move`, data),
     delete: (listId: string, taskId: string) =>
         api.delete(`/lists/${listId}/tasks/${taskId}`),
+
+    // Dependencies
+    addDependency: (listId: string, taskId: string, data: { dependentTaskId: string, type: 'BLOCKING' | 'WAITING_ON' }) =>
+        api.post(`/lists/${listId}/tasks/${taskId}/dependencies`, data),
+    removeDependency: (listId: string, taskId: string, dependencyId: string) =>
+        api.delete(`/lists/${listId}/tasks/${taskId}/dependencies/${dependencyId}`),
+
+    // Checklists
+    addChecklist: (listId: string, taskId: string, data: { name: string }) =>
+        api.post(`/lists/${listId}/tasks/${taskId}/checklists`, data),
+    removeChecklist: (listId: string, taskId: string, checklistId: string) =>
+        api.delete(`/lists/${listId}/tasks/${taskId}/checklists/${checklistId}`),
+    addChecklistItem: (listId: string, taskId: string, checklistId: string, data: { name: string, assigneeId?: string }) =>
+        api.post(`/lists/${listId}/tasks/${taskId}/checklists/${checklistId}/items`, data),
+    updateChecklistItem: (listId: string, taskId: string, checklistId: string, itemId: string, data: { name?: string, isResolved?: boolean, assigneeId?: string, order?: number }) =>
+        api.patch(`/lists/${listId}/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`, data),
+    removeChecklistItem: (listId: string, taskId: string, checklistId: string, itemId: string) =>
+        api.delete(`/lists/${listId}/tasks/${taskId}/checklists/${checklistId}/items/${itemId}`),
 };
 
 export const notificationsApi = {
@@ -163,9 +184,14 @@ export const analyticsApi = {
     tasksByPriority: () => api.get('/analytics/tasks/by-priority'),
     tasksByList: () => api.get('/analytics/tasks/by-list'),
     tasksByAssignee: () => api.get('/analytics/tasks/by-assignee'),
+    tasksForPriority: (priority: string) => api.get(`/analytics/tasks/by-priority/${priority}`),
     activity: () => api.get('/analytics/activity'),
     health: () => api.get('/analytics/health'),
+    getTimesheets: (params?: { userId?: string, startDate?: string, endDate?: string }) =>
+        api.get('/analytics/timesheets', { params }),
+    getProductivity: () => api.get('/analytics/productivity'),
 };
+
 
 export const usersApi = {
     updateProfile: (data: { name?: string; avatarUrl?: string }) =>
@@ -200,4 +226,104 @@ export const messagesApi = {
         api.post('/messages', data),
     listChannel: (channelId: string) => api.get(`/messages/channel/${channelId}`),
     listConversation: (conversationId: string) => api.get(`/messages/conversation/${conversationId}`),
+};
+
+export const dashboardsApi = {
+    list: () => api.get('/dashboards'),
+    create: (data: { name: string; description?: string; isPrivate?: boolean }) =>
+        api.post('/dashboards', data),
+    get: (id: string) => api.get(`/dashboards/${id}`),
+    update: (id: string, data: { name?: string; description?: string; isPrivate?: boolean }) =>
+        api.patch(`/dashboards/${id}`, data),
+    delete: (id: string) => api.delete(`/dashboards/${id}`),
+
+    addWidget: (dashboardId: string, data: any) =>
+        api.post(`/dashboards/${dashboardId}/widgets`, data),
+    updateWidget: (dashboardId: string, widgetId: string, data: any) =>
+        api.patch(`/dashboards/${dashboardId}/widgets/${widgetId}`, data),
+    removeWidget: (dashboardId: string, widgetId: string) =>
+        api.delete(`/dashboards/${dashboardId}/widgets/${widgetId}`),
+};
+
+export const docsApi = {
+    list: (params?: { spaceId?: string; folderId?: string }) => {
+        const query = new URLSearchParams();
+        if (params?.spaceId) query.append('spaceId', params.spaceId);
+        if (params?.folderId) query.append('folderId', params.folderId);
+        return api.get(`/docs?${query.toString()}`);
+    },
+    get: (id: string) => api.get(`/docs/${id}`),
+    create: (data: { title: string; content?: string; spaceId?: string; folderId?: string; parentId?: string }) =>
+        api.post('/docs', data),
+    update: (id: string, data: { title?: string; content?: string }) =>
+        api.patch(`/docs/${id}`, data),
+    delete: (id: string) => api.delete(`/docs/${id}`),
+};
+
+export const goalsApi = {
+    list: () => api.get('/goals'),
+    get: (id: string) => api.get(`/goals/${id}`),
+    create: (data: { name: string; description?: string; color?: string; endDate?: string; isPrivate?: boolean }) =>
+        api.post('/goals', data),
+    update: (id: string, data: Partial<{ name: string; description: string; color: string; endDate: string; isPrivate: boolean }>) =>
+        api.patch(`/goals/${id}`, data),
+    delete: (id: string) => api.delete(`/goals/${id}`),
+
+    addTarget: (goalId: string, data: { name: string; type?: string; targetValue: number; currentValue?: number; unit?: string }) =>
+        api.post(`/goals/${goalId}/targets`, data),
+    updateTarget: (goalId: string, targetId: string, data: Partial<{ name: string; targetValue: number; currentValue: number }>) =>
+        api.patch(`/goals/${goalId}/targets/${targetId}`, data),
+    removeTarget: (goalId: string, targetId: string) =>
+        api.delete(`/goals/${goalId}/targets/${targetId}`),
+};
+
+// AI API
+export const aiApi = {
+    create: (data: any) => api.post('/ai', data).then(res => res.data),
+    list: () => api.get('/ai').then(res => res.data),
+    get: (id: string) => api.get(`/ai/${id}`).then(res => res.data),
+};
+
+// Integrations API
+export const integrationsApi = {
+    create: (data: any) => api.post('/integrations', data).then(res => res.data),
+    list: () => api.get('/integrations').then(res => res.data),
+    get: (id: string) => api.get(`/integrations/${id}`).then(res => res.data),
+    update: (id: string, data: any) => api.patch(`/integrations/${id}`, data).then(res => res.data),
+    delete: (id: string) => api.delete(`/integrations/${id}`).then(res => res.data),
+};
+
+// Webhooks API
+export const webhooksApi = {
+    create: (data: any) => api.post('/webhooks', data).then(res => res.data),
+    list: () => api.get('/webhooks').then(res => res.data),
+    get: (id: string) => api.get(`/webhooks/${id}`).then(res => res.data),
+    update: (id: string, data: any) => api.patch(`/webhooks/${id}`, data).then(res => res.data),
+    delete: (id: string) => api.delete(`/webhooks/${id}`).then(res => res.data),
+};
+
+// Time Entries API
+export const timeEntriesApi = {
+    start: (data: { taskId: string; description?: string; duration?: number }) =>
+        api.post('/time-entries/start', data).then(res => res.data),
+    stop: (id: string) =>
+        api.patch(`/time-entries/${id}/stop`).then(res => res.data),
+    getActive: () =>
+        api.get('/time-entries/active').then(res => res.data),
+    getTaskTime: (taskId: string) =>
+        api.get(`/time-entries/task/${taskId}`).then(res => res.data),
+    update: (id: string, data: any) =>
+        api.patch(`/time-entries/${id}`, data).then(res => res.data),
+    delete: (id: string) =>
+        api.delete(`/time-entries/${id}`).then(res => res.data),
+};
+
+// Forms API
+export const formsApi = {
+    create: (data: any) => api.post('/forms', data).then(res => res.data),
+    list: () => api.get('/forms').then(res => res.data),
+    get: (id: string) => api.get(`/forms/${id}`).then(res => res.data),
+    update: (id: string, data: any) => api.patch(`/forms/${id}`, data).then(res => res.data),
+    delete: (id: string) => api.delete(`/forms/${id}`).then(res => res.data),
+    submit: (id: string, data: any) => api.post(`/forms/${id}/submit`, data).then(res => res.data),
 };

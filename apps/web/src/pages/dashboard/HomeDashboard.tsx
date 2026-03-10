@@ -20,6 +20,7 @@ import {
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { useAuthStore } from '../../store/authStore';
+import TimeTracking from '../../components/tasks/TimeTracking';
 
 export default function HomeDashboard() {
     const user = useAuthStore((s) => s.user);
@@ -243,16 +244,48 @@ export default function HomeDashboard() {
                                 <p className="text-center py-12 text-gray-600 text-xs italic">No tasks here yet.</p>
                             ) : (
                                 homeData.myWork[activeWorkTab].map((task: any) => (
-                                    <div key={task.id} className="flex items-center justify-between p-3 rounded-xl bg-black border border-gray-800 hover:border-gray-700 transition-all">
-                                        <div className="flex items-center gap-3">
-                                            <div className={clsx(
-                                                "w-4 h-4 rounded-full border-2",
-                                                task.status === 'DONE' ? "bg-green-500 border-green-500" : "border-gray-700"
-                                            )} />
-                                            <span className="text-sm text-gray-300 font-medium">{task.title}</span>
+                                    <div key={task.id} className="p-4 rounded-xl bg-black border border-gray-800 hover:border-gray-700 transition-all space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={clsx(
+                                                    "w-4 h-4 rounded-full border-2",
+                                                    task.status?.category === 'DONE' ? "bg-green-500 border-green-500" : "border-gray-700"
+                                                )} />
+                                                <span className="text-sm text-gray-300 font-medium truncate max-w-[200px]">{task.title}</span>
+                                            </div>
+                                            {task.dueDate && (
+                                                <span className="text-[10px] text-gray-500">{format(new Date(task.dueDate), 'MMM d')}</span>
+                                            )}
                                         </div>
-                                        {task.dueDate && (
-                                            <span className="text-[10px] text-gray-500">{format(new Date(task.dueDate), 'MMM d')}</span>
+
+                                        {/* Time Tracking Progress */}
+                                        {task.status?.category !== 'DONE' && (
+                                            <div className="pt-2 border-t border-gray-800/50 space-y-2">
+                                                {(task.timeEstimate > 0 || task.timeTracked > 0) && (
+                                                    <div className="flex flex-col gap-1.5 px-1 pt-1">
+                                                        <div className="flex justify-between items-center text-[10px] text-gray-400 font-medium tracking-wide">
+                                                            <span className="text-gray-300">
+                                                                {task.timeTracked ? (task.timeTracked / 3600).toFixed(1) + 'h' : '0h'} tracked
+                                                            </span>
+                                                            {task.timeEstimate > 0 && (
+                                                                <span>{(task.timeEstimate / 3600).toFixed(1)}h est</span>
+                                                            )}
+                                                        </div>
+                                                        {task.timeEstimate > 0 && (
+                                                            <div className="h-1.5 w-full bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                                                                <div
+                                                                    className={clsx(
+                                                                        "h-full rounded-full transition-all duration-500",
+                                                                        task.timeTracked > task.timeEstimate ? "bg-red-500" : "bg-accent-500"
+                                                                    )}
+                                                                    style={{ width: `${Math.min(100, (task.timeTracked / task.timeEstimate) * 100)}%` }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <TimeTracking taskId={task.id} />
+                                            </div>
                                         )}
                                     </div>
                                 ))
@@ -285,23 +318,53 @@ export default function HomeDashboard() {
                                     ) : (
                                         homeData.assignedToMe.map((task: any) => (
                                             <tr key={task.id} className="group hover:bg-gray-800/30">
-                                                <td className="py-3 flex items-center gap-3 pr-4">
-                                                    <div className="w-5 h-5 rounded-full border border-gray-700 flex items-center justify-center text-gray-600">
-                                                        <ClipboardList size={10} />
+                                                <td className="py-4 pr-4">
+                                                    <div className="space-y-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-5 h-5 rounded-lg bg-gray-800 flex items-center justify-center text-gray-500 group-hover:text-accent-400">
+                                                                <ClipboardList size={10} />
+                                                            </div>
+                                                            <span className="text-gray-300 font-medium">{task.title}</span>
+                                                        </div>
+                                                        <div className="pl-7 space-y-2">
+                                                            {(task.timeEstimate > 0 || task.timeTracked > 0) && (
+                                                                <div className="flex flex-col gap-1.5 px-1 pt-1">
+                                                                    <div className="flex justify-between items-center text-[10px] text-gray-400 font-medium tracking-wide">
+                                                                        <span className="text-gray-300">
+                                                                            {task.timeTracked ? (task.timeTracked / 3600).toFixed(1) + 'h' : '0h'} tracked
+                                                                        </span>
+                                                                        {task.timeEstimate > 0 && (
+                                                                            <span>{(task.timeEstimate / 3600).toFixed(1)}h est</span>
+                                                                        )}
+                                                                    </div>
+                                                                    {task.timeEstimate > 0 && (
+                                                                        <div className="h-1.5 w-full bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                                                                            <div
+                                                                                className={clsx(
+                                                                                    "h-full rounded-full transition-all duration-500",
+                                                                                    task.timeTracked > task.timeEstimate ? "bg-red-500" : "bg-accent-500"
+                                                                                )}
+                                                                                style={{ width: `${Math.min(100, (task.timeTracked / task.timeEstimate) * 100)}%` }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            <TimeTracking taskId={task.id} />
+                                                        </div>
                                                     </div>
-                                                    <span className="text-gray-300 font-medium">{task.title}</span>
                                                 </td>
-                                                <td className="py-3">
+                                                <td className="py-4 align-top pt-5">
                                                     <span className={clsx(
                                                         "px-2 py-0.5 rounded text-[10px] font-bold uppercase",
                                                         task.priority === 'URGENT' ? "text-red-400 bg-red-400/10" :
                                                             task.priority === 'HIGH' ? "text-orange-400 bg-orange-400/10" :
                                                                 "text-gray-500 bg-gray-500/10"
                                                     )}>
-                                                        {task.priority}
+                                                        {task.priority || 'NORMAL'}
                                                     </span>
                                                 </td>
-                                                <td className="py-3 text-right text-gray-500 group-hover:text-gray-300 transition-colors">
+                                                <td className="py-4 text-right text-gray-500 group-hover:text-gray-300 transition-colors align-top pt-5">
                                                     {task.dueDate ? format(new Date(task.dueDate), 'MMM d') : '-'}
                                                 </td>
                                             </tr>
@@ -325,6 +388,6 @@ export default function HomeDashboard() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

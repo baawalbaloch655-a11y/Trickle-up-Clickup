@@ -6,7 +6,7 @@ import {
     Star, MessageSquare, MessageCircle, UserPlus,
     Inbox, Reply, AtSign, ListTodo, MoreHorizontal,
     Calendar, FileText, Activity, PenTool, Video, Target, Clock,
-    Send, Megaphone, LayoutGrid, Globe, CheckCheck, UserCheck
+    Send, Megaphone, LayoutGrid, Globe, CheckCheck, UserCheck, Link2
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useUIStore } from '../../store/uiStore';
@@ -17,6 +17,10 @@ import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import { useState } from 'react';
 import CustomizeSidebarModal from './CustomizeSidebarModal';
+import CreateSpaceModal from '../spaces/CreateSpaceModal';
+import CreateChannelModal from '../channels/CreateChannelModal';
+import NewDirectMessageModal from '../conversations/NewDirectMessageModal';
+import CreateInSpaceModal from '../spaces/CreateInSpaceModal';
 
 // Map logical preference keys to their route and icon config
 const NAV_ITEM_CONFIG: Record<string, { to: string; icon: any; label: string; subItems?: any[] }> = {
@@ -35,6 +39,7 @@ const NAV_ITEM_CONFIG: Record<string, { to: string; icon: any; label: string; su
 };
 
 const bottomItems = [
+    { to: '/settings/integrations', icon: Link2, label: 'Integrations' },
     { to: '/settings/profile', icon: Settings, label: 'Settings' },
 ];
 
@@ -46,6 +51,10 @@ export default function Sidebar() {
 
     const [expandedSpaces, setExpandedSpaces] = useState<Record<string, boolean>>({});
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+    const [createSpaceOpen, setCreateSpaceOpen] = useState(false);
+    const [createChannelOpen, setCreateChannelOpen] = useState(false);
+    const [newDMOpen, setNewDMOpen] = useState(false);
+    const [activeSpaceForCreate, setActiveSpaceForCreate] = useState<{ id: string; name: string } | null>(null);
 
     // Compute dynamic inbox + subitems
     const inboxSubItems = [];
@@ -255,7 +264,11 @@ export default function Sidebar() {
                         <div className="pt-4 pb-2">
                             <div className="flex items-center justify-between px-3 mb-2">
                                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Workspace</span>
-                                <button className="text-gray-500 hover:text-accent-400 transition-colors">
+                                <button
+                                    onClick={() => setCreateSpaceOpen(true)}
+                                    className="text-gray-500 hover:text-accent-400 transition-colors p-0.5 rounded hover:bg-gray-800/50"
+                                    title="Create new space"
+                                >
                                     <Plus size={14} />
                                 </button>
                             </div>
@@ -275,6 +288,16 @@ export default function Sidebar() {
                                         >
                                             <Box size={14} className="text-accent-500/70" />
                                             <span className="text-xs font-medium flex-1 truncate">{space.name}</span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setActiveSpaceForCreate({ id: space.id, name: space.name });
+                                                }}
+                                                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-gray-700 text-gray-500 hover:text-accent-400 transition-all"
+                                                title={`Add to ${space.name}`}
+                                            >
+                                                <Plus size={12} />
+                                            </button>
                                             <ChevronDown
                                                 size={12}
                                                 className={clsx("transition-transform duration-200", expandedSpaces[space.id] ? "rotate-0" : "-rotate-90")}
@@ -347,7 +370,11 @@ export default function Sidebar() {
                                 <div className="pt-4 pb-2">
                                     <div className="flex items-center justify-between px-3 mb-2">
                                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Channels</span>
-                                        <button className="text-gray-500 hover:text-accent-400 transition-colors">
+                                        <button
+                                            onClick={() => setCreateChannelOpen(true)}
+                                            className="text-gray-500 hover:text-accent-400 transition-colors p-0.5 rounded hover:bg-gray-800/50"
+                                            title="Create new channel"
+                                        >
                                             <Plus size={14} />
                                         </button>
                                     </div>
@@ -374,7 +401,11 @@ export default function Sidebar() {
                                 <div className="pt-2 pb-2">
                                     <div className="flex items-center justify-between px-3 mb-2">
                                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Direct Messages</span>
-                                        <button className="text-gray-500 hover:text-accent-400 transition-colors">
+                                        <button
+                                            onClick={() => setNewDMOpen(true)}
+                                            className="text-gray-500 hover:text-accent-400 transition-colors p-0.5 rounded hover:bg-gray-800/50"
+                                            title="New direct message"
+                                        >
                                             <UserPlus size={14} />
                                         </button>
                                     </div>
@@ -460,6 +491,15 @@ export default function Sidebar() {
                 </div>
             </aside>
             <CustomizeSidebarModal />
+            <CreateSpaceModal open={createSpaceOpen} onClose={() => setCreateSpaceOpen(false)} />
+            <CreateChannelModal open={createChannelOpen} onClose={() => setCreateChannelOpen(false)} />
+            <NewDirectMessageModal open={newDMOpen} onClose={() => setNewDMOpen(false)} />
+            <CreateInSpaceModal
+                open={!!activeSpaceForCreate}
+                spaceId={activeSpaceForCreate?.id || ''}
+                spaceName={activeSpaceForCreate?.name || ''}
+                onClose={() => setActiveSpaceForCreate(null)}
+            />
         </>
     );
 }

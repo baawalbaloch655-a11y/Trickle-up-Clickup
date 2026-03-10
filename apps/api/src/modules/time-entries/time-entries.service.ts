@@ -6,6 +6,13 @@ import { CreateTimeEntryDto, UpdateTimeEntryDto } from './dto/time-entry.dto';
 export class TimeEntriesService {
     constructor(private prisma: PrismaService) { }
 
+    async findActive(userId: string) {
+        return this.prisma.timeEntry.findFirst({
+            where: { userId, endTime: null },
+            include: { task: true },
+        });
+    }
+
     async startTimer(userId: string, dto: CreateTimeEntryDto) {
         // Stop any running timer first
         const running = await this.prisma.timeEntry.findFirst({
